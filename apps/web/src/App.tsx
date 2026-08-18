@@ -9,6 +9,7 @@ import { BusinessPage } from './pages/BusinessPage';
 import { PersonalLandingPage } from './pages/PersonalLandingPage';
 import { PersonalIntakeFormPage } from './pages/PersonalIntakeFormPage';
 import { PersonalReportPage } from './pages/PersonalReportPage';
+import { ExampleReportPage } from './pages/ExampleReportPage';
 import { CorporateLoginPage } from './pages/CorporateLoginPage';
 import { CorporateDashboardPage } from './pages/CorporateDashboardPage';
 import { CorporateCreateAuditPage } from './pages/CorporateCreateAuditPage';
@@ -32,6 +33,8 @@ export default function App() {
                 <Route path="/personal" element={<PersonalLandingPage />} />
                 <Route path="/personal/start" element={<PersonalIntakeFormPage />} />
                 <Route path="/personal/report" element={<PersonalReportPage />} />
+                {/* Демо-отчёт без БД — пример для страницы "для людей", см. AuditHero. */}
+                <Route path="/example" element={<ExampleReportPage />} />
                 {/* /audit — старый путь личного кабинета до переезда на /personal. */}
                 <Route path="/audit" element={<Navigate to="/personal" replace />} />
 

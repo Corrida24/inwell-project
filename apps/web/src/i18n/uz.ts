@@ -532,13 +532,15 @@ export const uz: Content = {
   audit: {
     hero: {
       badge: "Bepul mustaqil tekshiruv",
-      title: "Maʼlumotlaringizni kiriting — holatingizni mutlaqo bepul biling",
-      subtitle:
-        "5 daqiqa, oddiy santimetrli lenta va tarozi kifoya. Yozilish shart emas, ofisga borish shart emas — shunchaki formani toʻldiring va koʻrsatkichlaringiz tahlilini darhol oling: meʼyor, xavflar va jinsingiz hamda yoshingizdagi boshqa odamlarga nisbatan qayerda turganingiz.",
-      cta: "Boshlash",
-      note: "Kerak boʻladi: santimetrli lenta va tarozi. Aqlli tarozi, kaliper va dinamometr shart emas.",
+      title: "Maʼlumotlaringizni kiriting — holatingizni biling",
+      freeBadge: "100% bepul",
+      subtitle: "Sizga 5 daqiqa, oddiy santimetrli lenta va tarozi kifoya.",
+      cta: "Sinab koʻring!",
+      ctaExample: "Namunani koʻrish",
+      note: "Barcha maʼlumotlar santimetr va kilogrammda kiritiladi",
       statsPrefix: "Tahlildan allaqachon oʻtganlar:",
       statsSuffix: "kishi",
+      perks: ["100% bepul", "Ism va familiyasiz", "Shaxsiy maʼlumotlarsiz", "Atigi 10 daqiqa", "20 ta koʻrsatkich", "Saqlash bepul"],
     },
 
     why: {
@@ -679,6 +681,13 @@ export const uz: Content = {
 
       savedNote: "Natijalar saqlandi — keyingi safar ularni joriy natijalar bilan taqqoslay olasiz.",
       notSavedNote: "Telefon raqamingizni kiritmadingiz, shuning uchun natija anonim saqlandi (uni qayta topib bo'lmaydi). Keyingi safar koʻrsatkichlarni taqqoslash uchun telefon raqamini kiriting.",
+      exampleNote: "Bu — namunaviy maʼlumotlar bilan koʻrsatilgan misol hisobot, real hisob-kitob emas.",
+
+      tryFloating: "Sinab koʻring",
+      saveFloating: "Saqlash",
+      savingImage: "Saqlanmoqda...",
+      historyTitle: "6 oyda 3 ta oʻlchov",
+      historyCaption: "Inwell Score",
 
       genderMale: "Erkak",
       genderFemale: "Ayol",

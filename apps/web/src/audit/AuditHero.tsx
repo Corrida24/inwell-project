@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { ArrowRight, Ruler, Scale as ScaleIcon } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { ArrowRight, Check, Eye, Ruler, Scale as ScaleIcon } from 'lucide-react';
 import { useLanguage } from '../i18n/LanguageContext';
 import { SectionGlow } from '../components/ui/SectionGlow';
 import { getTotalStatsCount } from './api';
@@ -32,15 +33,38 @@ export const AuditHero: React.FC<{ onStart: () => void }> = ({ onStart }) => {
 
         <h1 className="text-[30px] leading-[1.15] sm:text-5xl font-bold text-slate-900 tracking-tight">{h.title}</h1>
 
+        <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-700 text-xs sm:text-sm font-bold">
+          {h.freeBadge}
+        </div>
+
         <p className="text-sm sm:text-lg text-slate-600 max-w-2xl mx-auto leading-relaxed">{h.subtitle}</p>
 
-        <button
-          onClick={onStart}
-          className="inline-flex items-center gap-2 px-6 py-3 sm:py-3.5 rounded-xl text-sm sm:text-base font-bold text-white bg-brand-blue hover:bg-brand-blue-light transition-all shadow-lg shadow-blue-500/25 active:scale-95"
-        >
-          <span>{h.cta}</span>
-          <ArrowRight className="w-5 h-5" />
-        </button>
+        <div className="flex flex-col xs:flex-row items-center justify-center gap-3">
+          <button
+            onClick={onStart}
+            className="inline-flex items-center gap-2 px-6 py-3 sm:py-3.5 rounded-xl text-sm sm:text-base font-bold text-white bg-brand-blue hover:bg-brand-blue-light transition-all shadow-lg shadow-blue-500/25 active:scale-95"
+          >
+            <span>{h.cta}</span>
+            <ArrowRight className="w-5 h-5" />
+          </button>
+
+          <Link
+            to="/example"
+            className="inline-flex items-center gap-2 px-6 py-3 sm:py-3.5 rounded-xl text-sm sm:text-base font-bold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 transition-all active:scale-95"
+          >
+            <Eye className="w-5 h-5" />
+            <span>{h.ctaExample}</span>
+          </Link>
+        </div>
+
+        <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-1.5 max-w-xl mx-auto pt-1">
+          {h.perks.map((perk) => (
+            <span key={perk} className="inline-flex items-center gap-1 text-xs sm:text-sm text-slate-600 font-medium">
+              <Check className="w-3.5 h-3.5 text-brand-teal shrink-0" />
+              {perk}
+            </span>
+          ))}
+        </div>
 
         {statsCount !== null && statsCount > 0 && (
           <p className="text-sm sm:text-base text-slate-600">
