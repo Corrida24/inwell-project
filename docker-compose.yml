@@ -1,0 +1,42 @@
+version: "3.8"
+
+# Локальный/боевой запуск приложения (frontend+backend) одной командой:
+#   docker compose up --build
+# Затем один раз применить схему БД:
+#   docker compose run --rm api node dist/db/migrate.js
+#
+# БАЗА ДАННЫХ — ТОЛЬКО Supabase Postgres. Docker здесь запускает исключительно
+# само приложение (api + web), локального Postgres-контейнера больше нет —
+# api подключается к DATABASE_URL из apps/api/.env (реальный Supabase Postgres
+# connection string). Второй "локальной" базы для fallback не существует:
+# если apps/api/.env не заполнен реальными Supabase-значениями, api не
+# запустится (см. apps/api/.env.example).
+#
+# На реальном хостинге обычно web (nginx) стоит за отдельным reverse-proxy
+# с HTTPS (Caddy/Traefik/Nginx на хосте) — этот compose даёт голый стек,
+# TLS-терминацию добавьте поверх под конкретный VPS/домен.
+
+services:
+  api:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    ports:
+      - "4000:4000"
+    environment:
+      NODE_ENV: production
+      PORT: 4000
+      WEB_ORIGIN: "https://inwell.uz"
+    env_file:
+      - apps/api/.env
+    restart: always
+
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+      args:
+        VITE_API_BASE_URL: "https://inwell.uz"
+    ports:
+      - "8080:80"
+    restart: always
