@@ -1,0 +1,89 @@
+export type AuditStatus = 'active' | 'full' | 'expired';
+
+export interface Company {
+  id: string;
+  name: string;
+  inn: string;
+}
+
+export interface AuditListItem {
+  id: string;
+  name: string;
+  deadline: string;
+  maxResponses: number;
+  comment: string | null;
+  publicToken: string;
+  responseCount: number;
+  status: AuditStatus;
+  createdAt: string;
+}
+
+export interface CreateAuditInput {
+  name: string;
+  deadline: string;
+  maxResponses: number;
+  comment?: string;
+}
+
+export interface MetricAggregate {
+  key: string;
+  label: string;
+  unit: string;
+  hasCategory: boolean;
+  average: number | null;
+  distribution: { label: string; pct: number; level: number }[] | null;
+}
+
+export interface GroupAggregate {
+  key: string;
+  label: string;
+  participantCount: number;
+  averageScore: number | null;
+  metrics: MetricAggregate[];
+}
+
+export interface CompositionBreakdown {
+  key: string;
+  label: string;
+  count: number;
+  pct: number;
+}
+
+export interface Composition {
+  gender: CompositionBreakdown[];
+  ageBand: CompositionBreakdown[];
+  department: CompositionBreakdown[];
+  region: CompositionBreakdown[];
+}
+
+export interface Highlight {
+  key: string;
+  label: string;
+  pct: number;
+}
+
+export interface AvailableFilters {
+  departments: string[];
+  genders: ('M' | 'F')[];
+  regions: string[];
+  ageBands: { id: string; label: string }[];
+  offices: string[];
+}
+
+export interface AuditAggregation {
+  participantCount: number;
+  availableFilters: AvailableFilters;
+  appliedFilters: { department?: string; gender?: 'M' | 'F'; region?: string; ageBand?: string; office?: string };
+  overall: GroupAggregate;
+  composition: Composition;
+  positiveHighlights: Highlight[];
+  attentionHighlights: Highlight[];
+  byDepartment: GroupAggregate[];
+  byGender: GroupAggregate[];
+  byAgeBand: GroupAggregate[];
+}
+
+export interface AuditResultsResponse {
+  audit: AuditListItem;
+  aggregation: AuditAggregation;
+}
