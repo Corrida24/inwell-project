@@ -1,344 +1,114 @@
-# Inwell — объединённый проект (лендинг + калькулятор + corporate MVP)
+# Inwell
 
-Один сайт с двумя режимами, переключаемыми в шапке — каждый на своём URL:
+Inwell is a biometric wellness platform with two products on a single codebase:
 
-- **Для людей** (`/personal`) — бесплатная самопроверка. Три отдельные
-  страницы, не один длинный скролл: `/personal` (лендинг с кнопкой
-  «Начать»), `/personal/start` (форма ввода данных) и `/personal/report`
-  (персональный wellness-отчёт: снимок данных, композиция тела, расчётные
-  показатели, симметрия правой/левой стороны, динамика к предыдущему
-  замеру). Формулы считаются на бэкенде — на фронтенде их нет.
-- **Для бизнеса** (`/corporate`) — B2B-лендинг, и с этого этапа ещё и
-  рабочий corporate MVP поверх того же лендинга (см. раздел
-  «Corporate MVP» ниже): вход компании, кабинет со списком аудитов, создание
-  аудита с публичной ссылкой, анонимная форма для сотрудников (переиспользует
-  тот же расчётный движок, что и `/personal`) и агрегированный дашборд
-  результатов по компании.
+- **Personal** (`/personal`) — a free, self-service body-composition check-up. Users enter measurements taken with a tape measure and a scale and get an instant report: BMI, waist-to-height and waist-to-hip ratios, body-fat estimate, visceral fat area, and several other indices, each benchmarked against a reference population and against Inwell's own accumulated data.
+- **Corporate** (`/corporate`) — a B2B wellness-audit product. A company gets a login, creates an audit, and shares one public link with employees. Each employee completes the same measurement form anonymously (no name, phone, or email) and receives their own personal report, while the company sees an aggregated, anonymized dashboard across the whole workforce — participation, score distribution, and breakdowns by department, gender, age band, and city.
 
-`/` редиректит на `/corporate`, `/audit` (старый путь) редиректит на
-`/personal` — старые ссылки не ломаются.
+All health calculations run once, on the backend, and are shared by both products — the corporate dashboard is aggregation on top of the same report engine used by `/personal`, not a separate calculator.
 
-Языки — русский и узбекский (латиница). Английский убран полностью.
+## Tech stack
 
-Структура данных, измерений и расчётов для персонального отчёта построена
-по `Inwell_v1_Analytics_Dictionary.xlsx` (если файл понадобится в
-следующий раз — держите его под рукой, это основной источник требований
-для этой части продукта).
-
-## Структура
+- **Frontend** (`apps/web`) — React 19, Vite, Tailwind CSS, React Router. Single-page app serving both the personal and corporate experiences.
+- **Backend** (`apps/api`) — Node.js, Express, TypeScript, PostgreSQL. All formulas, validation, and aggregation logic live here.
+- **Database** — Supabase-hosted PostgreSQL, the single database for the whole application (no local/fallback database).
+- **Auth** — Supabase Auth (email + password) for company accounts.
 
 ```
 apps/
-  web/   — React 19 + Vite + Tailwind 4 + react-router. Один SPA, два режима (+ corporate).
-  api/   — Node.js + Express + TypeScript + PostgreSQL (Supabase). Все формулы — здесь.
-    src/db/migrations/  — версионированные SQL-миграции (0001_personal_schema.sql,
-                           0002_corporate_schema.sql, ...), применяются по порядку имён
-                           файлов при каждом старте API.
-docker-compose.yml — запускает ТОЛЬКО приложение (api + web). База данных —
-                      это всегда внешний Supabase Postgres, локального
-                      Docker-контейнера с БД в проекте больше нет.
+  web/   React app — personal landing/report + corporate login/dashboard/results
+  api/   Express API — calculations, persistence, aggregation, auth
+    src/db/migrations/   Versioned, idempotent SQL migrations, applied in order at API startup
+docker-compose.yml        Runs the application only (api + web); the database is always Supabase
 ```
 
-## База данных: только Supabase Postgres
+## Product features
 
-С этого этапа единственная база проекта — Supabase Postgres. Локального
-Docker-контейнера с PostgreSQL как фолбэка нет и не предполагается: если
-`DATABASE_URL` недоступен, API не «откатывается» на локальную БД, а просто
-не поднимается (или падает на первом запросе к БД) — так и должно быть,
-чтобы никогда молча не работать не с той базой.
+### Personal report
 
-- И `personal`-таблицы (`users`, `assessments`), и `corporate`-таблицы
-  (`companies`, `audits`, `responses`) живут в одной и той же Supabase
-  Postgres-базе, в схеме `public`.
-- Миграции — в `apps/api/src/db/migrations/*.sql`, применяются в
-  алфавитном порядке имён файлов при каждом старте API
-  (`ensureSchema()` в `apps/api/src/index.ts` → `apps/api/src/db/migrate.ts`).
-  Все миграции написаны идемпотентно (`CREATE TABLE IF NOT EXISTS`,
-  `DROP POLICY IF EXISTS` + `CREATE POLICY`), поэтому безопасно гонять их
-  на каждом старте — ручной шаг `npm run migrate` тоже доступен отдельно,
-  если нужно применить миграции без запуска самого API.
-- Корпоративные таблицы защищены Row Level Security (RLS): `companies` и
-  `audits` разрешают `SELECT` только своей компании (по `auth.uid()`), а у
-  `responses` **нет ни одной SELECT-политики** ни для `anon`, ни для
-  `authenticated` — таблицу с ответами сотрудников не может прочитать
-  никто, кроме бэкенда (который подключается сервисной ролью Postgres,
-  для которой RLS не действует). Это и есть основной механизм анонимности:
-  агрегированную аналитику компания получает только через API, никогда
-  напрямую из БД.
-- Как получить `DATABASE_URL`: Supabase Dashboard → Project Settings →
-  Database → Connection string → вкладка **"Session pooler"** (НЕ "Direct
-  connection" и НЕ "Transaction pooler"). Прямое подключение
-  (`db.<ref>.supabase.co`) резолвится только в IPv6 — из большинства
-  Docker-сетей и части хостингов оно физически недостижимо
-  (`getaddrinfo ENOTFOUND`), даже с правильным паролем. Пулер-хост
-  (`aws-0-<region>.pooler.supabase.com`, порт 5432, пользователь вида
-  `postgres.<project-ref>`) доступен по IPv4. Transaction pooler не подходит —
-  приложению нужны обычные многошаговые транзакции с блокировкой строки
-  (`SELECT ... FOR UPDATE`) для лимита ответов на аудит. Если пароль
-  содержит спецсимволы (`/`, `+`, `#`...), их нужно URL-encode'ить.
-  Внешние подключения к Supabase Postgres требуют TLS — `apps/api/src/db/pool.ts`
-  включает его автоматически для любого не-`localhost` хоста.
+- Body-composition report computed from manual measurements: height, weight, waist, hip, chest, neck, thigh and biceps circumference, age, gender, and activity level.
+- Indices: BMI, waist-to-height ratio, waist-to-hip ratio, Body Adiposity Index, Body Roundness Index, A Body Shape Index, Conicity Index, Abdominal Volume Index, estimated visceral fat area, US Navy body-fat percentage, body surface area, basal metabolic rate, and total daily energy expenditure — combined into a single weighted **Inwell Score**.
+- Each metric is benchmarked two ways: against a normal-distribution reference population, and against Inwell's own accumulated measurements for the same gender (once enough data exists).
+- An optional phone number lets a user track progress over time — a repeat submission from the same number links to the previous one and unlocks a "your progress" comparison (weight, waist, BMI, etc.). Without a phone number, the report is still generated and the measurement is still recorded (each submission gets its own unique, anonymous record — see *Data & privacy* below); it just cannot be looked up again for a future comparison.
+- Interface available in Russian and Uzbek.
 
-## Что изменилось по сравнению с двумя исходными проектами
+### Corporate wellness audits
 
-1. **Формулы ушли на бэкенд.** В исходном калькуляторе (`fit-audit-app`)
-   всё считалось в браузере — формулы были видны любому в devtools. Теперь
-   `apps/api/src/calc/*` — это порт тех формул на TypeScript (числа
-   проверены регрессионным тестом против оригинала — `npm test` в apps/api),
-   а фронтенд только отправляет измерения и показывает готовый отчёт.
+- **Company access** — companies do not self-register; an administrator provisions each company's login. The login page surfaces contact details for requesting access.
+- **Dashboard** — company name, tax ID, and a list of the company's audits (up to 10 per company).
+- **Create an audit** — name, deadline, and a response cap (1–100; larger headcounts are routed to a custom-pricing conversation). Creating an audit generates a unique, unguessable public link that can be copied from the audit list at any time.
+- **Employee form** — reached via the public link, no login required. Employees provide only what the calculation needs, plus a department, and see their own personal report immediately after submitting.
+- **Results dashboard** — desktop-first, aggregate view of the whole audit: overall participation and average score, notable strengths and areas of attention, participant composition (gender/age/department/city), a summary metrics table with category breakdowns, and per-department, per-gender, and per-age-band comparisons. Filters for city, office, gender, age band, and department.
 
-2. **Убраны 5 из 14 показателей исходного калькулятора**, которые считались
-   по данным смарт-весов (биоимпеданс), калипера или динамометра: % жировой
-   массы (по весам), FMI, FFMI, метаболический возраст, ИФС (сила хвата). У
-   обычного человека дома этих приборов нет. Взвешенный **Inwell Score**
-   считается по оставшимся 9 показателям, которые нужна только
-   сантиметровая лента и весы: BMI, WHtR, WHR, BAI, BRI, ABSI, индекс
-   конусности, AVI, висцеральный жир (расчётная площадь) — веса
-   перенормируются, как и в оригинале.
+### Public "people analyzed" counter
 
-   Отдельно, по `Inwell_v1_Analytics_Dictionary.xlsx`, добавлены ещё 4
-   показателя, которые **тоже не требуют приборов** (это не то же самое,
-   что убранные 5 — тут другой метод): % жира по методу **US Navy**
-   (обхваты шеи/талии/бёдер, без весов с биоимпедансом), площадь
-   поверхности тела (**BSA**, формула Дюбуа), базовый обмен (**BMR**,
-   Харрис-Бенедикт) и суточный расход энергии (**TDEE**). Формулы
-   портированы 1:1 из `fitaudit/js/calculations.js`, где они уже были
-   реализованы для этого продукта. Эти 4 показателя не входят во взвешенный
-   Inwell Score (чтобы не трогать уже проверенные веса), но полноценно
-   показаны в персональном отчёте.
+The personal landing page shows a running total of completed analyses (personal and corporate combined), served by a small public endpoint that sums both tables. No individual data is exposed — just the count.
 
-3. **Никаких ФИО.** Отчёт полностью анонимный. Телефон — единственный
-   опциональный идентификатор. С миграции
-   `0003_personal_anonymous_assessments.sql` **сохраняется каждый расчёт,
-   с телефоном или без** — нужно для (а) публичного счётчика «уже прошли
-   анализ» на лендинге (см. п. «Публичный счётчик» ниже), который обязан
-   считать реально все случаи, и (b) percentile/peer-выборки, которая
-   опирается на всех, а не только на тех, кто оставил телефон. Без
-   телефона расчёт сохраняется как одноразовая анонимная запись (своя
-   строка `users` с `phone = NULL` на каждую отправку, без истории) — её
-   нельзя найти повторно и не с чем сравнить «через месяц» (человеку так и
-   объясняется в форме). Если телефон указан (строгий формат
-   `+998 XX XXX XX XX`, нормализуется в `+998XXXXXXXXX` как уникальный
-   ключ), повторная отправка с тем же номером обновляет профиль, добавляет
-   запись в историю замеров и включает секцию «Ваша динамика» (вес/талия/
-   BMI: было → стало).
+## Data & privacy
 
-4. **Схема БД** (`apps/api/src/db/migrations/0001_personal_schema.sql`) уже
-   учитывает будущий Telegram-логин: в таблице `users` есть колонка
-   `telegram_id` (пока всегда NULL). Когда будете делать логин — просто
-   заполните её при привязке аккаунта, менять структуру не придётся.
+- Corporate responses never include a name, phone number, or email — only the measurements the calculation needs plus an optional department. There is no field that could identify a respondent.
+- At the database level, the `responses` table has no row-level-security read policy for any client role (`anon` or `authenticated`) — it can only be read by the backend's service role. A company can never query employee-level data directly, even if it wanted to; the API only ever returns aggregates.
+- Every API request for a company's audits and results is additionally scoped to that company's ID in application code, independent of the database-level protection — access control does not rely on a single layer.
+- Personal submissions are recorded regardless of whether a phone number is provided; without one, a submission is stored as a standalone anonymous record that cannot be re-associated with the person who submitted it.
 
-5. **Два уровня перцентиля** — «референсная популяция» (общая оценка по
-   полу, нормальное распределение — как и раньше) и «база Inwell»
-   (перцентиль по факту накопленных в БД замеров того же пола, нужно ≥3
-   записей). Раньше так считался только Inwell Score; теперь — так же и
-   каждое сырое измерение, и каждый расчётный показатель. С п. 3 выше
-   (сохраняются все расчёты, не только с телефоном) выборка «база Inwell»
-   растёт быстрее и честнее отражает реальное распределение — анонимные
-   расчёты участвуют в ней наравне с телефонными, просто как отдельная
-   одноразовая запись (см. `getPeerAssessments()` в
-   `apps/api/src/db/assessmentsRepo.ts` — там ничего не пришлось менять,
-   анонимные записи туда просто попадают сами по той же логике). Компания/
-   отдел как отдельный benchmark **не реализованы** для `/personal` — в
-   публичной самообслуживаемой форме нет привязки человека к работодателю,
-   показывать выдуманное сравнение с "компанией" не стали (для
-   `/a/:token`, где привязка к компании есть, это и есть Corporate MVP
-   ниже).
+## Getting started
 
-## Публичный счётчик «Уже прошли анализ»
+You'll need a Supabase project (PostgreSQL + Auth). Copy `apps/api/.env.example` to `apps/api/.env` and `apps/web/.env.example` to `apps/web/.env`, and fill in your Supabase project's connection string and API keys.
 
-В hero `/personal`-лендинга — строка «Уже прошли анализ: N человек».
-`N` — это реально `count(*)` по таблице `assessments` (personal, с
-телефоном и без) `+ count(*)` по таблице `responses` (corporate) —
-эндпоинт `GET /api/stats/total-count` в `apps/api/src/routes/stats.ts`,
-публичный, без авторизации, отдаёт только сумму двух чисел, никаких
-персональных данных. Сотрудники бизнеса (`/a/:token`) тоже засчитываются —
-они проходят тот же расчёт, просто в контексте аудита компании. Строка на
-лендинге не рендерится, пока число не загрузилось (без "прыжка" макета и
-без нуля-заглушки), и просто скрывается, если бэкенд недоступен — счётчик
-не должен ломать сам лендинг.
+Use your Supabase project's **Session pooler** connection string for `DATABASE_URL`, not the direct connection — the direct hostname is IPv6-only and unreachable from many networks and container runtimes, and the application needs standard multi-statement transactions with row locking, which the transaction pooler does not support.
 
-## Corporate MVP
+Never put the Supabase service-role key or the database connection string in the frontend build — only the publishable/anon key belongs there.
 
-Функционал: компания получает логин от администратора проекта → заходит в
-кабинет → создаёт аудит → получает публичную ссылку → раздаёт её
-сотрудникам → сотрудники (без логина, без ФИО/телефона) заполняют
-стандартную форму замеров + отдел → каждый сразу видит свой обычный
-персональный отчёт (тот же `computeFullReport()`, что и у `/personal`) → его
-ответ анонимно добавляется в аудит компании → компания видит
-агрегированный дашборд по всей выборке и по срезам (отдел/пол/возраст/город).
-
-- **Вход** — `/corporate/login` (кнопка «Войти» в шапке ведёт сюда).
-  Публичной регистрации нет: логин и пароль компании создаёт администратор
-  проекта скриптом `npm run create-company` (см. ниже), контакты для
-  получения доступа показаны прямо на странице входа.
-- **Кабинет** — `/corporate/dashboard`: название компании, ИНН, список
-  аудитов, кнопка «Создать аудит» (лимит — 10 аудитов на компанию).
-- **Создание аудита** — `/corporate/audits/new`: название, дедлайн (не в
-  прошлом), максимум ответов (1–100 — если сотрудников больше 100, форма
-  прямо просит связаться с администраторами для индивидуальной стоимости),
-  необязательный комментарий. После создания — публичная ссылка вида
-  `/a/XXXXXXXX` с кнопкой «Скопировать ссылку». Аудиты не редактируются
-  после создания.
-- **Публичная форма сотрудника** — `/a/:token`, без логина. Вместо
-  телефона/ФИО — только принадлежность к компании («Опросник от имени
-  компании: ...») и поле «Отдел» (IT/HR/Sales/Marketing/Finance/Accounting/
-  Другое). Лимит ответов защищён от гонки (`SELECT ... FOR UPDATE` на
-  строке аудита внутри транзакции) — при одновременной отправке 100-го и
-  101-го ответа лишний гарантированно получит "заполнен", а не создаст
-  перелимит.
-- **Результаты аудита** — `/corporate/audits/:id`, доступно только из
-  кабинета компании (кнопка «Посмотреть результаты»). Desktop-first,
-  минималистичный дашборд (без hero-блоков и анимаций): общая картина
-  (участники, средний Inwell Score, положительные показатели/зоны
-  внимания), состав участников, сводная таблица показателей с
-  распределением по категориям, разбивка по отделам/полу/возрасту, компактные
-  фильтры (город, офис — задел на будущее, пол, возраст, отдел).
-- **Анонимность** — таблица `responses` не хранит ФИО/телефон/email и не
-  имеет `respondent_id`; на уровне БД у неё вообще нет SELECT-политики RLS
-  для ролей `anon`/`authenticated` (см. раздел про Supabase выше) — прочитать
-  её может только бэкенд сервисной ролью, и даже он всегда возвращает
-  компании только агрегаты (`buildAuditAggregation()` в
-  `apps/api/src/corporateAggregation.ts`), а не сырые ответы одного
-  человека.
-- **Показатели в corporate-аналитике** — те же самые, что и в персональном
-  отчёте (BMI, WHtR, WHR, BAI, BRI, ABSI, индекс конусности, AVI,
-  висцеральный жир, % жировой массы, Inwell Score), просто усреднённые /
-  сгруппированные по категориям. Никаких новых медицинских формул для
-  corporate не вводилось.
-
-### Как создать корпоративный аккаунт (только через администратора)
+### Run with Docker
 
 ```bash
-cd apps/api
-npm run create-company -- --name "ООО Ромашка" --inn 123456789 \
-  --email hr@romashka.uz --password "SomeStrongPass123"
-```
-
-Скрипт создаёт пользователя в Supabase Auth (нужны `SUPABASE_URL` +
-`SUPABASE_SECRET_KEY` в `apps/api/.env`) и строку в таблице `companies`,
-привязанную к нему. Логин/пароль после этого сообщаются компании вручную
-(например, по контактам, указанным на `/corporate/login`).
-
-### Демо-данные для проверки дашборда (`seedDemoCompany.ts`)
-
-`npm run seed-demo-company -- --count 50` — DEV-ONLY скрипт, генерирует
-демо-компанию с одним аудитом и N реалистично разнообразных анонимных
-ответов (разные отделы/пол/возраст/города/уровни Inwell Score), чтобы
-визуально проверить corporate-дашборд на выборке 50+ человек, не собирая
-реальных сотрудников. **Важно:** в отличие от `create-company.ts`, этот
-скрипт сам вставляет строку в `auth.users` в обход настоящего Supabase
-Auth — это работает только на локальной тестовой базе со схемой `auth`
-(например, локальный Postgres с самодельной заглушкой этой схемы), и
-**не сработает и не должен использоваться против реального Supabase**,
-где `auth.users` управляется сервисом Auth и прямые вставки в неё
-недопустимы. Использовать только для локальной разработки/скриншотов.
-
-## Локальный запуск
-
-Docker (`docker-compose.yml`) в этом проекте запускает **только само
-приложение** (api + web) — базы данных в стеке больше нет. Перед любым из
-вариантов ниже нужен рабочий Supabase-проект (см. раздел про базу данных
-выше) и заполненные `.env` с его данными.
-
-### Вариант 1 — Docker
-
-```bash
-cp apps/api/.env.example apps/api/.env   # заполните DATABASE_URL / SUPABASE_URL / SUPABASE_SECRET_KEY
-cp apps/web/.env.example apps/web/.env   # заполните VITE_SUPABASE_URL / VITE_SUPABASE_PUBLISHABLE_KEY
 docker compose up --build
 ```
 
-Миграции применяются автоматически при старте API (с несколькими
-попытками — на случай сетевой задержки до Supabase, а не до локального
-Postgres, как раньше) — отдельная команда `migrate` не нужна, но доступна
-(`npm run migrate` внутри `apps/api`), если нужно применить их отдельно.
+Web: http://localhost:8080 — API: http://localhost:4000. Database migrations are applied automatically on API startup.
 
-Сайт — http://localhost:8080, API — http://localhost:4000.
-
-### Вариант 2 — вручную (для разработки)
+### Run manually
 
 ```bash
-# Бэкенд
+# API
 cd apps/api
-cp .env.example .env        # DATABASE_URL/SUPABASE_URL/SUPABASE_SECRET_KEY — данные вашего Supabase-проекта
 npm install
-npm run dev                 # http://localhost:4000 — миграции применяются сами при старте
+npm run dev          # http://localhost:4000
 
-# Формулы можно проверить отдельно, без БД:
-npm test
-
-# Фронтенд (в отдельном терминале)
+# Web (separate terminal)
 cd apps/web
-cp .env.example .env        # VITE_SUPABASE_URL/VITE_SUPABASE_PUBLISHABLE_KEY — те же значения, что и у API, но публичный ключ
 npm install
-npm run dev                 # http://localhost:3000
+npm run dev           # http://localhost:3000
 ```
 
-## Деплой на реальный хостинг
+Run the calculation engine's regression tests independently of the database with `npm test` inside `apps/api`.
 
-Нужен VPS с Node.js (обычный shared/cPanel-хостинг для статики, на котором
-сейчас стоит лендинг, для бэкенда не подойдёт — там нет Node-рантайма).
-PostgreSQL отдельно поднимать не нужно — база всегда Supabase, VPS нужен
-только для запуска api/web. Дальше — на выбор:
+### Provisioning a company account
 
-- **Docker** — самый простой путь: скопировать репозиторий на сервер,
-  заполнить `apps/api/.env` и `apps/web/.env` реальными значениями (это
-  делается ДО `docker compose up`, так как `VITE_...`-переменные
-  вшиваются в статику на этапе сборки), `docker compose up -d --build`,
-  поставить домен за reverse-proxy с HTTPS (например, Caddy или Nginx на
-  хосте) перед портами 8080 (web) и 4000 (api). Certbot/Let's Encrypt — как
-  обычно для любого VPS.
-- **Без Docker** — `npm run build` в обеих папках, `apps/web/dist` отдать
-  статикой (тот же nginx или тот же cPanel, если там можно поднять и
-  прокси на Node — иначе нужен отдельный VPS для api), `apps/api` запустить
-  через pm2/systemd (`node dist/index.js`).
+```bash
+cd apps/api
+npm run create-company -- --name "Company LLC" --inn 123456789 \
+  --email hr@company.com --password "StrongPassword123"
+```
 
-Не забудьте:
-- задать `DATABASE_URL`, `SUPABASE_URL`, `SUPABASE_SECRET_KEY`, `WEB_ORIGIN`
-  (домен фронтенда, для CORS) в окружении API — **`SUPABASE_SECRET_KEY` и
-  `DATABASE_URL` никогда не должны попасть во фронтенд-сборку или в git**;
-- задать `VITE_API_BASE_URL`, `VITE_SUPABASE_URL`, `VITE_SUPABASE_PUBLISHABLE_KEY`
-  (домен API + публичные Supabase-ключи) при сборке фронтенда — это
-  собирается в статику на этапе `vite build`, поменять после сборки нельзя
-  без пересборки;
-- убедиться, что `.env`/`.env.*` не закоммичены (`.gitignore` на всех трёх
-  уровнях — корень, `apps/api`, `apps/web` — уже это исключает; в репозиторий
-  должны попадать только `.env.example` файлы без реальных значений).
+Creates a Supabase Auth user and the corresponding company record. Share the resulting credentials with the company directly.
 
-Миграции применять вручную не нужно — API сам применяет их при старте
-(`ensureSchema()` в `apps/api/src/index.ts`, с повторными попытками, пока
-Supabase Postgres не станет доступен).
+### Demo data
 
-## Дальше (не входит в этот этап)
+`npm run seed-demo-company -- --count 50` (inside `apps/api`) generates a demo company with one audit and a realistic, varied set of anonymous responses, useful for reviewing the corporate dashboard without collecting real employee data. This script inserts directly into a local test database's `auth` schema and is not compatible with a live Supabase project — development/staging use only.
 
-- Telegram-логин + личный кабинет с историей замеров — база уже готова
-  (см. п. 4 выше), нужен только сам логин-флоу и пара страниц кабинета.
-  Сейчас отчёт передаётся со страницы формы на страницу отчёта через
-  `sessionStorage` (без бэкенд-эндпоинта "получить отчёт по id") — как
-  появится кабинет, это будет первое, что стоит заменить на реальный API.
-- Иллюстрации к полям формы сейчас — простые схематичные SVG
-  (`apps/web/src/audit/MeasureIllustration.tsx`), не профессиональная
-  графика. Можно заменить на фото/иллюстрации без изменения остального
-  кода — это один компонент.
-- Перцентили по базе Inwell (не по общим популяционным ориентирам)
-  становятся содержательными только когда наберётся заметный объём
-  реальных замеров — сейчас это честно показывается как "пока
-  недостаточно данных" при n < 3.
-- Company/Department benchmark из dictionary (`07_Benchmark_Rules`) — для
-  сотрудников, заполняющих форму через **corporate**-ссылку (`/a/:token`),
-  теперь реализован (агрегированный дашборд компании по отделам/полу/
-  возрасту, см. раздел «Corporate MVP» выше). Для самообслуживаемой
-  публичной формы (`/personal`, без привязки к компании) сравнения с
-  «компанией» по-прежнему нет и не может быть — там просто неоткуда взять
-  работодателя.
-- Мобильная версия corporate-дашборда (`/corporate/audits/:id`) сознательно
-  не делалась на этом этапе — приоритет был на desktop (~1200–1600px),
-  где проверялась реальная 50+ выборка. Личный кабинет/лендинг (`/personal`,
-  `/corporate` лендинг) остаются mobile-friendly, как и раньше.
-- Возраст сейчас — прямое поле (12–99), а не дата рождения, как в
-  `01_Input_Data` dictionary. Сознательное упрощение для этого этапа: с
-  прямым возрастом не нужно пересчитывать его при каждом визите, а точность
-  для перцентилей и норм не меняется. Если понадобится точный возраст на
-  дату — переключить на дату рождения несложно (один компонент формы +
-  `calcAge()` уже есть как референс в `fitaudit/js/calculations.js`).
+## Deployment
+
+Any Linux VPS with Node.js works; PostgreSQL does not need to be self-hosted since the database is always Supabase.
+
+- **Docker** — populate `apps/api/.env` and `apps/web/.env` with production values, then `docker compose up -d --build`, and place a reverse proxy with HTTPS (Caddy, Nginx, etc.) in front of ports 8080 (web) and 4000 (api).
+- **Without Docker** — `npm run build` in both `apps/api` and `apps/web`; serve `apps/web/dist` as static files, and run `apps/api` with a process manager (pm2, systemd).
+
+The frontend's environment variables (`VITE_API_BASE_URL`, `VITE_SUPABASE_URL`, `VITE_SUPABASE_PUBLISHABLE_KEY`) are baked into the static build at `vite build` time — set them before building, not after.
+
+## Roadmap
+
+- Phone/Telegram-based login and a personal account with full measurement history — the schema already has a `telegram_id` column reserved for this.
+- Code-splitting the frontend bundle (currently a single ~830 KB chunk).
+- A mobile layout for the corporate results dashboard (currently desktop-first by design; the personal product and marketing pages are already mobile-responsive).
+- Switching age input to date of birth for exact age calculation (currently a direct age field, a deliberate simplification that does not affect percentile accuracy).
