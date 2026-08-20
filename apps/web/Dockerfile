@@ -6,6 +6,16 @@ WORKDIR /app
 # живёт на другом origin/домене, чем сам фронтенд.
 ARG VITE_API_BASE_URL=""
 ENV VITE_API_BASE_URL=$VITE_API_BASE_URL
+# Supabase (корпоративный login, apps/web/src/corporate/supabaseClient.ts).
+# Это ПУБЛИЧНЫЕ ключи (anon/publishable), но всё равно только build-time:
+# .dockerignore нарочно исключает .env из контекста сборки, поэтому без
+# этих ARG у Vite неоткуда взять значения и login показывает "Supabase ещё
+# не настроен". Передавайте через --build-arg или docker-compose.yml args:
+# (см. корневой docker-compose.yml и .env.example рядом с ним).
+ARG VITE_SUPABASE_URL=""
+ENV VITE_SUPABASE_URL=$VITE_SUPABASE_URL
+ARG VITE_SUPABASE_PUBLISHABLE_KEY=""
+ENV VITE_SUPABASE_PUBLISHABLE_KEY=$VITE_SUPABASE_PUBLISHABLE_KEY
 COPY package.json package-lock.json* ./
 RUN npm install
 COPY . .

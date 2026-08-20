@@ -1,7 +1,5 @@
-version: "3.8"
-
-# Локальный/боевой запуск приложения (frontend+backend) одной командой:
-#   docker compose up --build
+# Боевой запуск приложения (frontend+backend) одной командой:
+#   docker compose up -d --build
 # Затем один раз применить схему БД:
 #   docker compose run --rm api node dist/db/migrate.js
 #
@@ -12,31 +10,58 @@ version: "3.8"
 # если apps/api/.env не заполнен реальными Supabase-значениями, api не
 # запустится (см. apps/api/.env.example).
 #
-# На реальном хостинге обычно web (nginx) стоит за отдельным reverse-proxy
-# с HTTPS (Caddy/Traefik/Nginx на хосте) — этот compose даёт голый стек,
-# TLS-терминацию добавьте поверх под конкретный VPS/домен.
+# ДОМЕН НИГДЕ НЕ ЗАШИТ, кроме WEB_ORIGIN ниже (только для CORS-заголовка).
+# Фронтенд ходит на API по относительному пути "/api/..." — nginx внутри
+# web-контейнера проксирует его на api-контейнер по имени сервиса (см.
+# apps/web/nginx.conf). Поэтому сборка одинаково работает под inwell.uz,
+# под IP сервера или под любым другим доменом — ничего в этом файле
+# перед каждым деплоем менять не нужно, порт api наружу тоже не публикуется.
+#
+# На реальном хостинге web (nginx, порт 8080) обычно стоит за отдельным
+# reverse-proxy с HTTPS-терминацией на хосте (Caddy/Traefik/Nginx) под
+# inwell.uz — этот compose даёт голый стек, TLS добавьте поверх.
 
 services:
   api:
-    build:
-      context: .
-      dockerfile: apps/api/Dockerfile
-    ports:
-      - "4000:4000"
-    environment:
-      NODE_ENV: production
-      PORT: 4000
-      WEB_ORIGIN: "https://inwell.uz"
+    build: ./apps/api
+    restart: unless-stopped
     env_file:
-      - apps/api/.env
-    restart: always
+      - ./apps/api/.env
+    environment:
+      PORT: 4000
+      # CORS: разрешённый origin фронтенда. Не участвует в обычных запросах
+      # браузера (они идут через nginx-проксю на тот же origin, что и сама
+      # страница — same-origin, CORS не требуется), но остаётся правильным
+      # значением на случай прямых cross-origin обращений к API.
+      WEB_ORIGIN: "https://inwell.uz"
+    # Порт api не публикуется на хост — снаружи он не нужен, всё идёт через
+    # nginx web-контейнера (location /api/ в apps/web/nginx.conf). Если
+    # понадобится подебажить api напрямую с сервера — используйте
+    # `docker compose exec api sh` или временно раскомментируйте порт ниже.
+    # ports:
+    #   - "127.0.0.1:4000:4000"
 
   web:
     build:
-      context: .
-      dockerfile: apps/web/Dockerfile
+      context: ./apps/web
+      # VITE_API_BASE_URL сюда осознанно НЕ передаётся — по умолчанию (см.
+      # apps/web/Dockerfile) он собирается пустой строкой, а пустая строка
+      # во фронтенд-коде значит "тот же origin", то есть относительные
+      # запросы "/api/..." через nginx-проксю выше. Домен подставлять
+      # никуда не нужно.
+      #
+      # А вот VITE_SUPABASE_URL / VITE_SUPABASE_PUBLISHABLE_KEY передать
+      # НУЖНО — это Vite build-time переменные для страницы /login
+      # (корпоративная авторизация), и .dockerignore нарочно не пускает
+      # apps/web/.env внутрь сборки. Docker Compose подставит их сюда из
+      # .env-файла РЯДОМ С ЭТИМ docker-compose.yml (корень репозитория,
+      # не apps/web/.env) — см. .env.example в корне. Если оставить пустыми,
+      # сборка пройдёт, но /login покажет "Supabase ещё не настроен".
       args:
-        VITE_API_BASE_URL: "https://inwell.uz"
+        VITE_SUPABASE_URL: "${VITE_SUPABASE_URL:-}"
+        VITE_SUPABASE_PUBLISHABLE_KEY: "${VITE_SUPABASE_PUBLISHABLE_KEY:-}"
+    restart: unless-stopped
+    depends_on:
+      - api
     ports:
       - "8080:80"
-    restart: always
