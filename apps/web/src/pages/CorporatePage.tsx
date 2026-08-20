@@ -1,98 +1,144 @@
 import React from 'react';
-import { Link } from 'react-router-dom';
 import {
   ArrowRight,
-  ArrowUpRight,
   Activity,
   Brain,
   Heart,
   Apple,
   Moon,
+  Flame,
   Zap,
-  ClipboardList,
-  Send,
-  EyeOff,
+  TrendingUp,
+  Wallet,
+  Link2,
+  ClipboardEdit,
+  Share2,
   BarChart3,
+  Users,
   Lock,
-  Clock,
-  Sparkles,
-  Radio,
-  ShieldCheck,
+  Rocket,
+  CheckCircle2,
+  Phone,
+  Send,
 } from 'lucide-react';
 import { useLanguage } from '../i18n/LanguageContext';
 import { useContactsModal } from '../components/ContactsModalContext';
+import { INWELL_CONTACTS } from '../data/wellfitData';
 import { SectionGlow } from '../components/ui/SectionGlow';
 import { Reveal, RevealStagger, RevealItem } from '../components/ui/Reveal';
 import { FaqItem } from '../components/ui/FaqAccordion';
-import { ContactsSection } from '../components/ContactsSection';
 import { Footer } from '../components/Footer';
 
-const DIMENSION_ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
-  physical: Activity,
-  mental: Brain,
-  satisfaction: Heart,
-  sleep: Moon,
-};
-
-const PROBLEM_ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
-  physical: Activity,
-  mental: Brain,
-  satisfaction: Heart,
+const CURIOSITY_ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
+  burnout: Flame,
   stress: Zap,
+  dynamics: TrendingUp,
+  budget: Wallet,
 };
 
-const STEP_ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
-  create: ClipboardList,
-  send: Send,
-  collect: EyeOff,
+const CONCEPT_ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
+  connect: Link2,
+  create: ClipboardEdit,
+  share: Share2,
   analyze: BarChart3,
 };
 
-const MODULE_ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
-  fitAudit: Activity,
-  mental: Brain,
-  satisfaction: Heart,
-  nutrition: Apple,
-  sleep: Moon,
-};
-
-const TRUST_ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
-  anonymous: EyeOff,
-  confidential: Lock,
-  aggregated: BarChart3,
-};
-
 const TIME_TO_VALUE_ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
-  launch: Zap,
-  live: Radio,
-  validation: ShieldCheck,
+  launch: Rocket,
+  calc: BarChart3,
+  anon: Lock,
 };
+
+/** 5 модулей платформы — все РАВНОЗНАЧНЫ (без "доступно"/"скоро"), каждому
+ * своя иконка и лёгкий цветовой акцент, чтобы bento-грид не читалась как
+ * "один активный + 4 мёртвых", а как 5 полноценных направлений одной
+ * платформы. */
+const MODULE_STYLES: Record<string, { icon: React.ComponentType<{ className?: string }>; iconBg: string; iconBorder: string; iconColor: string }> = {
+  fitness: { icon: Activity, iconBg: 'bg-teal-50', iconBorder: 'border-teal-200', iconColor: 'text-brand-teal' },
+  mental: { icon: Brain, iconBg: 'bg-indigo-50', iconBorder: 'border-indigo-200', iconColor: 'text-indigo-600' },
+  satisfaction: { icon: Heart, iconBg: 'bg-rose-50', iconBorder: 'border-rose-200', iconColor: 'text-rose-500' },
+  nutrition: { icon: Apple, iconBg: 'bg-amber-50', iconBorder: 'border-amber-200', iconColor: 'text-amber-600' },
+  sleep: { icon: Moon, iconBg: 'bg-sky-50', iconBorder: 'border-sky-200', iconColor: 'text-brand-blue' },
+};
+
+/** Короткие подписи модулей для узкого мокапа "Мой отчёт" (сотрудник) —
+ * чтобы не обрезалось на мобильном; полные названия остаются в bento-гриде. */
+const MODULE_SHORT_TITLE: Record<string, string> = {
+  fitness: 'Physical Fitness',
+  mental: 'Mental Wellbeing',
+  satisfaction: 'Job Satisfaction',
+  nutrition: 'Nutrition & Habits',
+  sleep: 'Sleep & Recovery',
+};
+
+/** Точный кольцевой индикатор через conic-gradient — переиспользуется в
+ * hero-дашборде и мокапах "сотрудник/HR". */
+const ScoreRing: React.FC<{ score: number; size?: number; label?: string }> = ({ score, size = 80, label }) => (
+  <div className="shrink-0 flex flex-col items-center gap-1.5">
+    <div
+      className="relative rounded-full flex items-center justify-center"
+      style={{ width: size, height: size, background: `conic-gradient(#14b8a6 ${score * 3.6}deg, #e0f2fe 0deg)` }}
+    >
+      <div className="absolute rounded-full bg-white flex items-center justify-center" style={{ inset: Math.max(5, size * 0.08) }}>
+        <span className="font-extrabold text-slate-900" style={{ fontSize: size * 0.28 }}>
+          {score}
+        </span>
+      </div>
+    </div>
+    {label && <span className="text-[10px] font-semibold text-slate-500 tracking-wide text-center max-w-[8rem]">{label}</span>}
+  </div>
+);
+
+/** Тонкая полоса-метрика с подписью и процентом. */
+const MetricBar: React.FC<{ label: string; value: number }> = ({ label, value }) => (
+  <div>
+    <div className="flex items-center justify-between text-[11px] sm:text-xs mb-1">
+      <span className="font-semibold text-slate-600">{label}</span>
+      <span className="font-bold text-slate-900">{value}%</span>
+    </div>
+    <div className="h-1.5 rounded-full bg-sky-50 overflow-hidden">
+      <div className="h-full bg-brand-teal rounded-full" style={{ width: `${value}%` }} />
+    </div>
+  </div>
+);
+
+/** Шапка карточки-мокапа в стиле окна браузера — единый визуальный приём
+ * для всех "это реальный продукт с данными" блоков. */
+const ChromeBar: React.FC<{ label: string }> = ({ label }) => (
+  <div className="flex items-center gap-1.5 px-4 py-2.5 border-b border-sky-100 bg-slate-50/60">
+    <span className="w-2.5 h-2.5 rounded-full bg-rose-300" />
+    <span className="w-2.5 h-2.5 rounded-full bg-amber-300" />
+    <span className="w-2.5 h-2.5 rounded-full bg-emerald-300" />
+    <span className="ml-2 text-[11px] font-semibold text-slate-400">{label}</span>
+  </div>
+);
 
 /**
- * /corporate — визуальный bento-лендинг платформы Inwell (рефакторинг по
- * явному запросу: "kill the text walls", текст → UI). Ни один блок текста
- * не превышает 1-2 коротких предложений — концепции показаны карточками,
- * bento-грид модулей, мини-дашборд-мокапом в hero и flowchart'ом "как это
- * работает", а не абзацами. Полноценный длинный лендинг конкретно про Fit
- * Audit (с деталями, тарифами, FAQ) не удалён — он живёт на
- * /corporate/fit-audit (см. FitAuditLandingPage.tsx) и открывается по
- * клику на акцентную карточку модуля ниже.
+ * /corporate — B2B SaaS Corporate Wellness Platform лендинг Inwell.
+ * Позиционирование: онлайн-платформа, которая по данным нескольких тестов
+ * считает комплексный индекс здоровья компании во времени — 5 равнозначных
+ * направлений (Physical Fitness, Mental Wellbeing, Job Satisfaction & eNPS,
+ * Nutrition & Habits, Sleep & Recovery), а не "один рабочий модуль + роадмап".
+ * Единая цель конверсии — заявка (кнопка "Оставить заявку" открывает
+ * контакты), без параллельных формулировок CTA. Все цифры в дашборд-мокапах
+ * — иллюстративные демо-данные, явно подписаны.
  */
 export const CorporatePage: React.FC = () => {
   const { t } = useLanguage();
   const { open: openContacts } = useContactsModal();
   const cp = t.corporatePlatform;
   const h = cp.hero;
-  const [liveModule, ...soonModules] = cp.modules;
+  const ev = cp.employeeVsHr;
 
   return (
     <>
-      {/* 1. HERO — заголовок-обещание + мини-мокап дашборда вместо текста */}
-      <section className="relative pt-20 pb-10 sm:pt-32 sm:pb-16 overflow-hidden bg-gradient-to-b from-sky-50 via-white to-teal-50/30">
+      {/* 1. HERO — заголовок + вопрос-крючок + короткое объяснение + крупный
+         дашборд-мокап с 4 метриками и бейджем участников */}
+      <section className="relative pt-20 pb-10 sm:pt-28 sm:pb-16 overflow-hidden bg-gradient-to-b from-sky-50 via-white to-teal-50/30">
         <SectionGlow variant="blue" />
         <div className="max-w-5xl mx-auto px-5 sm:px-6 relative z-10">
-          <div className="grid lg:grid-cols-[1.05fr_0.95fr] gap-8 lg:gap-10 items-center">
-            <div className="text-center lg:text-left space-y-3.5 sm:space-y-5">
+          <div className="grid lg:grid-cols-[1fr_1.05fr] gap-8 lg:gap-10 items-center">
+            <div className="text-center lg:text-left space-y-3.5 sm:space-y-4">
               <div className="inline-flex items-center gap-1.5 sm:gap-2 px-3 py-1 sm:px-3.5 sm:py-1.5 rounded-full bg-white border border-sky-200 shadow-sm text-slate-700 text-xs sm:text-sm font-medium">
                 <span className="w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full bg-brand-teal animate-pulse" />
                 <span>{h.badge}</span>
@@ -106,11 +152,9 @@ export const CorporatePage: React.FC = () => {
                 </span>
               </h1>
 
-              <p className="text-sm sm:text-lg text-slate-600 max-w-md mx-auto lg:mx-0">{h.subtitle}</p>
+              <p className="text-base sm:text-xl font-semibold text-slate-800 max-w-md mx-auto lg:mx-0">{h.question}</p>
 
-              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-700 text-xs sm:text-sm font-bold">
-                {h.pilotBadge}
-              </div>
+              <p className="text-sm sm:text-base text-slate-600 max-w-md mx-auto lg:mx-0 leading-relaxed">{h.subtitle}</p>
 
               <div className="flex flex-col sm:flex-row items-center justify-center lg:justify-start gap-2.5 sm:gap-3 pt-1">
                 <button
@@ -120,57 +164,36 @@ export const CorporatePage: React.FC = () => {
                   <span>{h.ctaPrimary}</span>
                   <ArrowRight className="w-4 h-4" />
                 </button>
-                <Link
-                  to="/corporate/fit-audit"
+                <a
+                  href="#how-it-works"
                   className="w-full sm:w-auto px-6 py-3 sm:py-3.5 rounded-xl bg-white hover:bg-sky-50 text-slate-800 font-semibold text-sm border border-sky-200 shadow-sm flex items-center justify-center gap-2 transition-all active:scale-95"
                 >
-                  <Activity className="w-4 h-4 text-brand-teal" />
                   <span>{h.ctaSecondary}</span>
-                </Link>
+                </a>
               </div>
             </div>
 
-            {/* Мини-мокап дашборда — вместо абзаца, показываем 4 направления платформы визуально */}
-            <div className="hidden lg:block">
-              <div className="bg-white border border-sky-200 rounded-2xl shadow-xl shadow-slate-900/5 overflow-hidden">
-                <div className="flex items-center gap-1.5 px-4 py-2.5 border-b border-sky-100 bg-slate-50/60">
-                  <span className="w-2.5 h-2.5 rounded-full bg-rose-300" />
-                  <span className="w-2.5 h-2.5 rounded-full bg-amber-300" />
-                  <span className="w-2.5 h-2.5 rounded-full bg-emerald-300" />
-                  <span className="ml-2 text-[11px] font-semibold text-slate-400">{h.dashboardLabel}</span>
-                </div>
-                <div className="p-5 space-y-4">
-                  <div className="flex items-center justify-between">
-                    {h.dimensions.map((d, idx) => {
-                      const Icon = DIMENSION_ICONS[d.key] ?? Activity;
-                      return (
-                        <React.Fragment key={d.key}>
-                          <div className="flex flex-col items-center gap-1.5">
-                            <span className="w-10 h-10 rounded-xl bg-sky-50 border border-sky-200 flex items-center justify-center">
-                              <Icon className="w-4.5 h-4.5 text-brand-teal" />
-                            </span>
-                            <span className="text-[10px] font-semibold text-slate-500">{d.label}</span>
-                          </div>
-                          {idx < h.dimensions.length - 1 && <span className="flex-1 h-px bg-sky-200 mx-1 mb-4" />}
-                        </React.Fragment>
-                      );
-                    })}
-                  </div>
-                  <div className="grid grid-cols-3 gap-2.5 pt-1">
-                    <div className="bg-sky-50/70 border border-sky-100 rounded-lg h-14 flex items-end p-2">
-                      <div className="w-full flex items-end gap-1 h-8">
-                        <span className="flex-1 bg-brand-teal/40 rounded-sm" style={{ height: '45%' }} />
-                        <span className="flex-1 bg-brand-teal/60 rounded-sm" style={{ height: '70%' }} />
-                        <span className="flex-1 bg-brand-teal rounded-sm" style={{ height: '95%' }} />
-                      </div>
-                    </div>
-                    <div className="bg-sky-50/70 border border-sky-100 rounded-lg h-14 flex items-center justify-center">
-                      <span className="text-lg font-extrabold text-slate-900">72</span>
-                    </div>
-                    <div className="bg-sky-50/70 border border-sky-100 rounded-lg h-14 flex items-center justify-center">
-                      <span className="w-7 h-7 rounded-full border-4 border-brand-teal border-r-sky-100" />
+            {/* Дашборд-мокап — крупный, с 4 метриками сразу по всем
+               направлениям платформы, видим и на мобильных */}
+            <div>
+              <div className="bg-white border border-sky-200 rounded-2xl shadow-xl shadow-slate-900/10 overflow-hidden">
+                <ChromeBar label={h.dashboardLabel} />
+                <div className="p-4 sm:p-6 space-y-4 sm:space-y-5">
+                  <div className="flex items-center gap-4 sm:gap-6">
+                    <ScoreRing score={h.dashboard.score} size={88} label={h.dashboard.scoreLabel} />
+                    <div className="flex-1 min-w-0 space-y-2.5 sm:space-y-3">
+                      {h.dashboard.metrics.map((m) => (
+                        <MetricBar key={m.key} label={m.label} value={m.value} />
+                      ))}
                     </div>
                   </div>
+                  <div className="flex items-center gap-2.5 bg-sky-50 border border-sky-100 rounded-xl p-3">
+                    <span className="w-8 h-8 rounded-lg bg-white border border-sky-200 flex items-center justify-center shrink-0">
+                      <Users className="w-4 h-4 text-brand-blue" />
+                    </span>
+                    <span className="text-xs sm:text-sm font-bold text-slate-800">{h.dashboard.participantsBadge}</span>
+                  </div>
+                  <div className="text-center text-[10px] font-medium text-slate-400">{h.dashboardDemoNote}</div>
                 </div>
               </div>
             </div>
@@ -178,44 +201,23 @@ export const CorporatePage: React.FC = () => {
         </div>
       </section>
 
-      {/* 1.5 TIME-TO-VALUE — скорость и достоверность, компактный ряд из 3 карточек */}
-      <section className="py-6 sm:py-10 bg-white border-b border-sky-100">
+      {/* 2. ЛЮБОПЫТСТВО — "чего компания может не знать о своей команде" */}
+      <section className="py-10 sm:py-16 bg-white">
         <div className="max-w-4xl mx-auto px-5 sm:px-6">
-          <RevealStagger className="grid grid-cols-3 gap-2 sm:gap-4">
-            {cp.timeToValue.items.map((item) => {
-              const Icon = TIME_TO_VALUE_ICONS[item.key] ?? Zap;
-              return (
-                <RevealItem key={item.key}>
-                  <div className="h-full flex flex-col items-center text-center gap-1.5 sm:gap-2 bg-sky-50/60 border border-sky-100 rounded-xl p-3 sm:p-4">
-                    <span className="w-9 h-9 sm:w-10 sm:h-10 rounded-lg bg-white border border-sky-200 flex items-center justify-center">
-                      <Icon className="w-4 h-4 sm:w-4.5 sm:h-4.5 text-brand-teal" />
-                    </span>
-                    <span className="text-[11px] sm:text-sm font-bold text-slate-800 leading-tight">{item.title}</span>
-                    <span className="text-[10px] sm:text-xs text-slate-500 leading-snug hidden sm:block">{item.desc}</span>
-                  </div>
-                </RevealItem>
-              );
-            })}
-          </RevealStagger>
-        </div>
-      </section>
-
-      {/* 2. THE PROBLEM — 4 минималистичные карточки, без текста-объяснения */}
-      <section className="py-8 sm:py-14 bg-white">
-        <div className="max-w-4xl mx-auto px-5 sm:px-6">
-          <Reveal className="text-center mb-5 sm:mb-8">
-            <h2 className="text-base sm:text-xl font-bold text-slate-900">{cp.problem.title}</h2>
+          <Reveal className="text-center mb-6 sm:mb-9 space-y-2">
+            <h2 className="text-xl sm:text-3xl font-bold text-slate-900 tracking-tight">{cp.curiosity.title}</h2>
+            <p className="text-sm sm:text-base text-slate-600 max-w-2xl mx-auto leading-relaxed">{cp.curiosity.subtitle}</p>
           </Reveal>
-          <RevealStagger className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 sm:gap-4">
-            {cp.problem.items.map((item) => {
-              const Icon = PROBLEM_ICONS[item.key] ?? Activity;
+          <RevealStagger className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+            {cp.curiosity.items.map((item) => {
+              const Icon = CURIOSITY_ICONS[item.key] ?? Zap;
               return (
                 <RevealItem key={item.key}>
-                  <div className="flex flex-col items-center text-center gap-2 bg-slate-50/70 border border-slate-200 rounded-2xl py-5 px-3">
-                    <span className="w-11 h-11 rounded-xl bg-white border border-sky-200 flex items-center justify-center">
-                      <Icon className="w-5 h-5 text-brand-teal" />
+                  <div className="h-full flex items-start gap-3 bg-slate-50/70 border border-slate-200 rounded-2xl p-4 sm:p-5">
+                    <span className="w-10 h-10 rounded-xl bg-white border border-sky-200 flex items-center justify-center shrink-0">
+                      <Icon className="w-4.5 h-4.5 text-brand-teal" />
                     </span>
-                    <span className="text-xs sm:text-sm font-semibold text-slate-700">{item.label}</span>
+                    <p className="text-sm sm:text-base font-semibold text-slate-800 leading-snug">{item.question}</p>
                   </div>
                 </RevealItem>
               );
@@ -224,25 +226,28 @@ export const CorporatePage: React.FC = () => {
         </div>
       </section>
 
-      {/* 3. THE CONCEPT — flowchart Create → Send → Collect → Analyze */}
-      <section className="py-8 sm:py-14 bg-gradient-to-b from-sky-50/60 to-white">
+      {/* 3. КАК ЭТО РАБОТАЕТ — Connect → Create → Share → Analyze */}
+      <section id="how-it-works" className="py-10 sm:py-16 bg-gradient-to-b from-sky-50/60 to-white">
         <div className="max-w-4xl mx-auto px-5 sm:px-6">
-          <Reveal className="text-center mb-5 sm:mb-8">
-            <h2 className="text-base sm:text-xl font-bold text-slate-900">{cp.concept.title}</h2>
+          <Reveal className="text-center mb-6 sm:mb-9">
+            <h2 className="text-lg sm:text-2xl font-bold text-slate-900">{cp.concept.title}</h2>
           </Reveal>
           <RevealStagger className="flex flex-col sm:flex-row items-stretch sm:items-center justify-center gap-2 sm:gap-2.5">
             {cp.concept.steps.map((step, idx) => {
-              const Icon = STEP_ICONS[step.key] ?? ClipboardList;
+              const Icon = CONCEPT_ICONS[step.key] ?? Link2;
               return (
                 <React.Fragment key={step.key}>
                   <RevealItem>
-                    <div className="bg-white border border-sky-200 rounded-2xl p-3.5 sm:p-4 text-center w-full sm:w-40 space-y-1.5">
-                      <span className="w-9 h-9 mx-auto rounded-lg bg-sky-50 border border-sky-200 flex items-center justify-center">
-                        <Icon className="w-4 h-4 text-brand-teal" />
-                      </span>
+                    <div className="bg-white border border-sky-200 rounded-2xl p-4 text-center w-full sm:w-44 space-y-1.5">
+                      <div className="flex items-center justify-center gap-1.5">
+                        <span className="text-[11px] font-bold text-brand-blue/60">{step.number}</span>
+                        <span className="w-9 h-9 rounded-lg bg-sky-50 border border-sky-200 flex items-center justify-center">
+                          <Icon className="w-4 h-4 text-brand-teal" />
+                        </span>
+                      </div>
                       <div className="text-sm font-bold text-slate-900">{step.title}</div>
-                      <div className="text-[11px] text-slate-400">{step.actor}</div>
-                      <div className="text-[10px] font-medium text-brand-blue bg-sky-50 rounded-md px-1.5 py-1 truncate">{step.micro}</div>
+                      <div className="text-[11px] text-slate-500">{step.actor}</div>
+                      <div className="text-[11px] font-medium text-brand-blue bg-sky-50 rounded-md px-1.5 py-1 truncate">{step.micro}</div>
                     </div>
                   </RevealItem>
                   {idx < cp.concept.steps.length - 1 && (
@@ -255,131 +260,29 @@ export const CorporatePage: React.FC = () => {
         </div>
       </section>
 
-      {/* 4. PLATFORM MODULES — bento grid, Fit Audit акцентная карточка */}
-      <section className="py-8 sm:py-14 bg-white">
+      {/* 4. 5 МОДУЛЕЙ ПЛАТФОРМЫ — равнозначный bento-грид, без статусов */}
+      <section className="py-10 sm:py-16 bg-white">
         <div className="max-w-5xl mx-auto px-5 sm:px-6">
-          <Reveal className="text-center mb-5 sm:mb-8 space-y-1.5">
+          <Reveal className="text-center mb-6 sm:mb-9 space-y-1.5">
             <h2 className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight">{cp.modulesTitle}</h2>
-            <p className="text-sm text-slate-500">{cp.modulesSubtitle}</p>
+            <p className="text-sm text-slate-600 max-w-xl mx-auto">{cp.modulesSubtitle}</p>
           </Reveal>
 
-          <RevealStagger className="space-y-3 sm:space-y-4">
-            {/* Акцентная карточка — Fit Audit, единственный доступный модуль */}
-            <RevealItem>
-              <Link
-                to="/corporate/fit-audit"
-                className="group flex flex-col sm:flex-row sm:items-center gap-4 bg-gradient-to-br from-brand-blue to-brand-teal rounded-2xl p-5 sm:p-7 text-white hover:shadow-xl hover:shadow-blue-500/20 transition-all duration-300"
-              >
-                <span className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-white/15 flex items-center justify-center shrink-0">
-                  <Activity className="w-6 h-6 sm:w-7 sm:h-7 text-white" />
-                </span>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 flex-wrap mb-1">
-                    <h3 className="text-base sm:text-lg font-bold">{liveModule.title}</h3>
-                    <span className="inline-flex items-center gap-1 text-[11px] font-bold px-2 py-0.5 rounded-full bg-white/20">
-                      {cp.statusLive}
-                    </span>
-                  </div>
-                  <p className="text-sm text-white/85">{liveModule.description}</p>
-                </div>
-                <span className="inline-flex items-center gap-1 text-sm font-semibold shrink-0">
-                  {liveModule.cta}
-                  <ArrowUpRight className="w-4 h-4 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
-                </span>
-              </Link>
-            </RevealItem>
-
-            {/* Остальные модули — coming soon */}
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-3">
-              {soonModules.map((m) => {
-                const Icon = MODULE_ICONS[m.key] ?? Activity;
-                return (
-                  <RevealItem key={m.key}>
-                    <div className="h-full flex flex-col bg-slate-50/70 border border-slate-200 rounded-2xl p-3.5 sm:p-4">
-                      <div className="flex items-start justify-between gap-1.5 mb-2.5">
-                        <span className="w-9 h-9 rounded-lg bg-white border border-slate-200 flex items-center justify-center">
-                          <Icon className="w-4 h-4 text-slate-400" />
-                        </span>
-                        <span className="inline-flex items-center gap-1 text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-white text-slate-400 border border-slate-200 shrink-0">
-                          <Clock className="w-2.5 h-2.5" />
-                          {cp.statusSoon}
-                        </span>
-                      </div>
-                      <h3 className="text-xs sm:text-sm font-bold text-slate-700 mb-0.5">{m.title}</h3>
-                      <p className="text-[11px] sm:text-xs text-slate-400">{m.description}</p>
-                    </div>
-                  </RevealItem>
-                );
-              })}
-            </div>
-          </RevealStagger>
-        </div>
-      </section>
-
-      {/* 4.5 WHAT EMPLOYEES GET — мокап личного кабинета сотрудника (Personal Scorecard) */}
-      <section className="py-8 sm:py-14 bg-gradient-to-b from-sky-50/60 to-white">
-        <div className="max-w-4xl mx-auto px-5 sm:px-6">
-          <div className="grid sm:grid-cols-[0.9fr_1.1fr] gap-6 sm:gap-8 items-center">
-            <Reveal className="text-center sm:text-left space-y-1.5">
-              <h2 className="text-lg sm:text-2xl font-bold text-slate-900 tracking-tight">{cp.employeeView.title}</h2>
-              <p className="text-sm text-slate-500">{cp.employeeView.subtitle}</p>
-            </Reveal>
-
-            <Reveal className="bg-white border border-sky-200 rounded-2xl shadow-lg shadow-slate-900/5 overflow-hidden">
-              <div className="flex items-center gap-1.5 px-4 py-2.5 border-b border-sky-100 bg-slate-50/60">
-                <span className="w-2.5 h-2.5 rounded-full bg-rose-300" />
-                <span className="w-2.5 h-2.5 rounded-full bg-amber-300" />
-                <span className="w-2.5 h-2.5 rounded-full bg-emerald-300" />
-                <span className="ml-2 text-[11px] font-semibold text-slate-400">{cp.employeeView.chromeLabel}</span>
-              </div>
-              <div className="p-5 flex items-center gap-5">
-                <div className="shrink-0 flex flex-col items-center">
-                  <div className="relative w-20 h-20 rounded-full border-[6px] border-sky-100 flex items-center justify-center">
-                    <div className="absolute inset-0 rounded-full border-[6px] border-brand-teal border-r-transparent border-b-transparent rotate-[35deg]" />
-                    <span className="text-xl font-extrabold text-slate-900">78</span>
-                  </div>
-                  <span className="text-[9px] font-semibold text-slate-400 tracking-wide mt-1">{cp.employeeView.scoreCaption}</span>
-                </div>
-                <div className="flex-1 min-w-0 space-y-3">
-                  <div>
-                    <div className="flex items-center justify-between text-[11px] mb-1">
-                      <span className="font-semibold text-slate-600">{cp.employeeView.companyLabel}</span>
-                      <span className="font-bold text-slate-900">{cp.employeeView.companyValue}</span>
-                    </div>
-                    <div className="h-1.5 rounded-full bg-sky-50 overflow-hidden">
-                      <div className="h-full bg-brand-blue rounded-full" style={{ width: '65%' }} />
-                    </div>
-                  </div>
-                  <div>
-                    <div className="flex items-center justify-between text-[11px] mb-1">
-                      <span className="font-semibold text-slate-600">{cp.employeeView.groupLabel}</span>
-                      <span className="font-bold text-slate-900">{cp.employeeView.groupValue}</span>
-                    </div>
-                    <div className="h-1.5 rounded-full bg-sky-50 overflow-hidden">
-                      <div className="h-full bg-brand-teal rounded-full" style={{ width: '58%' }} />
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </Reveal>
-          </div>
-        </div>
-      </section>
-
-      {/* 5. TRUST — 3 колонки с иконками */}
-      <section className="py-8 sm:py-14 bg-gradient-to-b from-white to-sky-50/40">
-        <div className="max-w-3xl mx-auto px-5 sm:px-6">
-          <RevealStagger className="grid grid-cols-3 gap-2.5 sm:gap-5">
-            {cp.trust.items.map((item) => {
-              const Icon = TRUST_ICONS[item.key] ?? Lock;
+          <RevealStagger className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4">
+            {cp.modules.map((m) => {
+              const style = MODULE_STYLES[m.key] ?? MODULE_STYLES.fitness;
+              const Icon = style.icon;
               return (
-                <RevealItem key={item.key}>
-                  <div className="flex flex-col items-center text-center gap-1.5 sm:gap-2">
-                    <span className="w-11 h-11 sm:w-12 sm:h-12 rounded-xl bg-white border border-sky-200 shadow-sm flex items-center justify-center">
-                      <Icon className="w-4.5 h-4.5 sm:w-5 sm:h-5 text-brand-teal" />
+                <RevealItem key={m.key}>
+                  <div className="h-full flex flex-col bg-white border border-slate-200 rounded-2xl p-4 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-300">
+                    <span className={`w-10 h-10 rounded-xl border flex items-center justify-center mb-3 ${style.iconBg} ${style.iconBorder}`}>
+                      <Icon className={`w-4.5 h-4.5 ${style.iconColor}`} />
                     </span>
-                    <span className="text-xs sm:text-sm font-bold text-slate-800">{item.label}</span>
-                    <span className="text-[10px] sm:text-xs text-slate-400 hidden sm:block">{item.desc}</span>
+                    <h3 className="text-sm font-bold text-slate-900 mb-1 leading-snug">{m.title}</h3>
+                    <p className="text-[11px] sm:text-xs text-slate-500 leading-snug mb-3 flex-1">{m.description}</p>
+                    <span className="inline-flex self-start items-center text-[10px] font-semibold px-2 py-1 rounded-full bg-slate-50 text-slate-500 border border-slate-200">
+                      {m.badge}
+                    </span>
                   </div>
                 </RevealItem>
               );
@@ -388,10 +291,120 @@ export const CorporatePage: React.FC = () => {
         </div>
       </section>
 
-      {/* 5.5 FAQ — компактный аккордеон, ответы 1-2 предложения */}
-      <section className="py-8 sm:py-14 bg-white">
+      {/* 5. СОТРУДНИК vs HR — два равных UI-блока с bullet-поинтами и privacy-бейджами */}
+      <section className="py-10 sm:py-16 bg-sky-50/50">
+        <div className="max-w-5xl mx-auto px-5 sm:px-6">
+          <RevealStagger className="grid md:grid-cols-2 gap-5 sm:gap-6">
+            {/* Колонка сотрудника */}
+            <RevealItem>
+              <div className="h-full flex flex-col bg-white border border-sky-200 rounded-2xl p-5 sm:p-6 space-y-4">
+                <h3 className="text-lg font-bold text-slate-900">{ev.employee.title}</h3>
+
+                <div className="bg-slate-50/70 border border-sky-100 rounded-xl overflow-hidden">
+                  <ChromeBar label={ev.employee.chromeLabel} />
+                  <div className="p-4 flex items-center gap-4">
+                    <ScoreRing score={ev.employee.score} size={64} label={ev.employee.scoreCaption} />
+                    <div className="flex-1 min-w-0 space-y-2">
+                      {cp.modules.slice(0, 3).map((m) => (
+                        <div key={m.key} className="flex items-center gap-2">
+                          <CheckCircle2 className="w-3.5 h-3.5 text-brand-teal shrink-0" />
+                          <span className="text-[11px] text-slate-600 truncate">{MODULE_SHORT_TITLE[m.key] ?? m.title}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+
+                <ul className="space-y-2">
+                  {ev.employee.bullets.map((b) => (
+                    <li key={b} className="flex items-start gap-2 text-sm text-slate-600">
+                      <CheckCircle2 className="w-4 h-4 text-brand-teal shrink-0 mt-0.5" />
+                      <span>{b}</span>
+                    </li>
+                  ))}
+                </ul>
+
+                <div className="flex items-start gap-2 bg-teal-50/60 border border-teal-100 rounded-xl p-3 mt-auto">
+                  <Lock className="w-4 h-4 text-brand-teal shrink-0 mt-0.5" />
+                  <p className="text-xs sm:text-sm font-medium text-slate-700">{ev.employee.privacyBadge}</p>
+                </div>
+              </div>
+            </RevealItem>
+
+            {/* Колонка HR / компании */}
+            <RevealItem>
+              <div className="h-full flex flex-col bg-white border border-sky-200 rounded-2xl p-5 sm:p-6 space-y-4">
+                <h3 className="text-lg font-bold text-slate-900">{ev.hr.title}</h3>
+
+                <div className="bg-slate-50/70 border border-sky-100 rounded-xl overflow-hidden">
+                  <ChromeBar label={ev.hr.chromeLabel} />
+                  <div className="p-4 space-y-3">
+                    <div className="flex items-center gap-3">
+                      <ScoreRing score={ev.hr.score} size={56} />
+                      <span className="text-xs font-semibold text-slate-600">{ev.hr.scoreLabel}</span>
+                    </div>
+                    <div>
+                      <div className="text-[10px] font-semibold text-slate-400 mb-1.5">{ev.hr.departmentsLabel}</div>
+                      <div className="space-y-1.5">
+                        {ev.hr.departments.map((d) => (
+                          <div key={d.key} className="flex items-center gap-2">
+                            <span className="text-[11px] text-slate-500 w-20 shrink-0 truncate">{d.label}</span>
+                            <div className="flex-1 h-1.5 rounded-full bg-sky-100 overflow-hidden">
+                              <div className="h-full bg-brand-blue rounded-full" style={{ width: `${d.value}%` }} />
+                            </div>
+                            <span className="text-[11px] font-bold text-slate-700 w-8 text-right shrink-0">{d.value}%</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <ul className="space-y-2">
+                  {ev.hr.bullets.map((b) => (
+                    <li key={b} className="flex items-start gap-2 text-sm text-slate-600">
+                      <CheckCircle2 className="w-4 h-4 text-brand-blue shrink-0 mt-0.5" />
+                      <span>{b}</span>
+                    </li>
+                  ))}
+                </ul>
+
+                <div className="flex items-start gap-2 bg-sky-50/60 border border-sky-100 rounded-xl p-3 mt-auto">
+                  <BarChart3 className="w-4 h-4 text-brand-blue shrink-0 mt-0.5" />
+                  <p className="text-xs sm:text-sm font-medium text-slate-700">{ev.hr.privacyBadge}</p>
+                </div>
+              </div>
+            </RevealItem>
+          </RevealStagger>
+        </div>
+      </section>
+
+      {/* 6. TIME-TO-VALUE — 3 карточки с мягким градиентом вместо сухого текста */}
+      <section className="py-10 sm:py-16 bg-white">
+        <div className="max-w-4xl mx-auto px-5 sm:px-6">
+          <RevealStagger className="grid sm:grid-cols-3 gap-3 sm:gap-4">
+            {cp.timeToValue.items.map((item) => {
+              const Icon = TIME_TO_VALUE_ICONS[item.key] ?? Zap;
+              return (
+                <RevealItem key={item.key}>
+                  <div className="h-full flex flex-col items-center text-center gap-2 bg-gradient-to-b from-sky-50 to-white border border-sky-100 rounded-2xl p-5 sm:p-6">
+                    <span className="w-11 h-11 rounded-xl bg-white border border-sky-200 shadow-sm flex items-center justify-center">
+                      <Icon className="w-5 h-5 text-brand-teal" />
+                    </span>
+                    <span className="text-sm sm:text-base font-bold text-slate-900">{item.title}</span>
+                    <span className="text-xs sm:text-sm text-slate-500 leading-snug">{item.desc}</span>
+                  </div>
+                </RevealItem>
+              );
+            })}
+          </RevealStagger>
+        </div>
+      </section>
+
+      {/* 7. FAQ — компактный аккордеон */}
+      <section className="py-10 sm:py-16 bg-slate-50/60">
         <div className="max-w-2xl mx-auto px-5 sm:px-6">
-          <Reveal className="text-center mb-5 sm:mb-8">
+          <Reveal className="text-center mb-6 sm:mb-8">
             <h2 className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight">{cp.faq.title}</h2>
           </Reveal>
           <RevealStagger className="space-y-2 sm:space-y-2.5">
@@ -404,40 +417,39 @@ export const CorporatePage: React.FC = () => {
         </div>
       </section>
 
-      {/* 5.7 CONTACTS — готовый блок контактов, перед футером. Заголовок
-         переопределён: дефолтный текст компонента ("Запустите Fit-Audit...
-         калькулятор выше") написан для /corporate/fit-audit — здесь калькулятора
-         нет, речь про платформу целиком. */}
-      <ContactsSection headingOverride={cp.contactsHeading} />
-
-      {/* 6. FINAL CTA — бесплатный пилот, самый заметный акцент страницы */}
-      <section className="relative py-10 sm:py-16 overflow-hidden">
+      {/* 8. ЕДИНАЯ ФИНАЛЬНАЯ CTA-СЕКЦИЯ — заявка + только телефон и Telegram */}
+      <section className="relative py-10 sm:py-16 overflow-hidden bg-gradient-to-b from-white to-sky-50/40">
         <div className="max-w-3xl mx-auto px-5 sm:px-6">
           <Reveal className="relative overflow-hidden bg-gradient-to-br from-brand-blue via-brand-blue-light to-brand-teal rounded-3xl p-6 sm:p-10 text-center space-y-4 sm:space-y-5 shadow-2xl shadow-blue-500/25">
             <div className="absolute -top-10 -right-10 w-40 h-40 rounded-full bg-white/10 blur-2xl" aria-hidden />
-            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/15 text-white text-xs sm:text-sm font-bold">
-              <Sparkles className="w-3.5 h-3.5" />
-              {cp.pilot.title}
-            </div>
-            <div className="text-4xl sm:text-6xl font-extrabold text-white tracking-tight">100</div>
-            <p className="text-sm sm:text-base text-white/85 max-w-md mx-auto">{cp.pilot.subtitle}</p>
-            <div className="flex flex-wrap items-center justify-center gap-1.5 sm:gap-2">
-              {cp.pilot.bullets.map((b) => (
-                <span
-                  key={b}
-                  className="inline-flex items-center gap-1 px-2.5 py-1 sm:px-3 sm:py-1.5 rounded-lg bg-white/15 text-white text-[11px] sm:text-sm font-medium"
-                >
-                  {b}
-                </span>
-              ))}
-            </div>
+            <h2 className="text-2xl sm:text-4xl font-extrabold text-white tracking-tight">{cp.finalCta.title}</h2>
+            <p className="text-sm sm:text-base text-white/85 max-w-md mx-auto leading-relaxed">{cp.finalCta.subtitle}</p>
             <button
               onClick={openContacts}
               className="inline-flex items-center gap-2 px-6 py-3 sm:px-7 sm:py-3.5 rounded-xl bg-white hover:bg-sky-50 text-brand-blue font-bold text-sm transition-all shadow-lg active:scale-95"
             >
-              <span>{cp.pilot.cta}</span>
+              <span>{cp.finalCta.cta}</span>
               <ArrowRight className="w-4 h-4" />
             </button>
+
+            <div className="pt-3 sm:pt-4 mt-2 border-t border-white/20">
+              <div className="text-[11px] font-semibold text-white/60 uppercase tracking-wide mb-2.5">{cp.finalCta.contactsLabel}</div>
+              <div className="flex flex-wrap items-center justify-center gap-x-5 gap-y-2 text-sm text-white/90">
+                <a href={`tel:${INWELL_CONTACTS.phoneRaw}`} className="inline-flex items-center gap-1.5 hover:text-white transition-colors">
+                  <Phone className="w-3.5 h-3.5" />
+                  {INWELL_CONTACTS.phoneDisplay}
+                </a>
+                <a
+                  href={INWELL_CONTACTS.telegramCompany}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex items-center gap-1.5 hover:text-white transition-colors"
+                >
+                  <Send className="w-3.5 h-3.5" />
+                  Telegram
+                </a>
+              </div>
+            </div>
           </Reveal>
         </div>
       </section>
