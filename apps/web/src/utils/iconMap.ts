@@ -31,6 +31,7 @@ import {
   Utensils,
   Users,
   Repeat2,
+  TrendingUp,
   type LucideIcon,
 } from 'lucide-react';
 
@@ -67,6 +68,7 @@ export const ICON_MAP: Record<string, LucideIcon> = {
   Utensils,
   Users,
   Repeat2,
+  TrendingUp,
 };
 
 export const getIcon = (name: string): LucideIcon => ICON_MAP[name] ?? Activity;

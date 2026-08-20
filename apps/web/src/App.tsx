@@ -5,7 +5,8 @@ import { ContactsModalProvider } from './components/ContactsModalContext';
 import { ContactsModal } from './components/ContactsModal';
 import { Header } from './components/Header';
 import { ScrollToTopButton } from './components/ScrollToTopButton';
-import { BusinessPage } from './pages/BusinessPage';
+import { CorporatePage } from './pages/CorporatePage';
+import { FitAuditLandingPage } from './pages/FitAuditLandingPage';
 import { PersonalLandingPage } from './pages/PersonalLandingPage';
 import { PersonalIntakeFormPage } from './pages/PersonalIntakeFormPage';
 import { PersonalReportPage } from './pages/PersonalReportPage';
@@ -27,9 +28,13 @@ export default function App() {
             <Header />
             <main>
               <Routes>
-                {/* Корень теперь ведёт на персональный лендинг по умолчанию. */}
-                <Route path="/" element={<Navigate to="/personal" replace />} />
-                <Route path="/corporate" element={<BusinessPage />} />
+                {/* Корень ведёт на корпоративный лендинг по умолчанию — платформа
+                    Inwell позиционируется в первую очередь для бизнеса. */}
+                <Route path="/" element={<Navigate to="/corporate" replace />} />
+                <Route path="/corporate" element={<CorporatePage />} />
+                {/* Fit Audit — первый модуль платформы, свой лендинг (бывшая
+                    главная страница "для бизнеса", без изменений). */}
+                <Route path="/corporate/fit-audit" element={<FitAuditLandingPage />} />
                 <Route path="/personal" element={<PersonalLandingPage />} />
                 <Route path="/personal/start" element={<PersonalIntakeFormPage />} />
                 <Route path="/personal/report" element={<PersonalReportPage />} />

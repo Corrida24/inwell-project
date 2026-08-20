@@ -1,7 +1,13 @@
 import type { IntakeFormState, FullReport } from './types';
 import type { Lang } from '../i18n/LanguageContext';
 
-const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:4000';
+// "" (пустая строка, а не undefined) — валидное осознанное значение:
+// значит "тот же origin, что и сама страница" (см. nginx.conf, который
+// проксирует /api/* на api-контейнер). Поэтому тут "??", а не "||" — иначе
+// пустая строка в production-сборке всегда откатывалась бы на localhost.
+// localhost остаётся только дефолтом для локальной разработки без Docker
+// (когда переменная вообще не задана).
+const API_BASE = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:4000';
 
 export class ApiError extends Error {
   fieldErrors?: Record<string, string[]>;

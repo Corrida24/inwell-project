@@ -10,7 +10,13 @@ import { isSupabaseConfigured } from './supabaseAdmin.js';
 
 const app = express();
 const PORT = Number(process.env.PORT) || 4000;
-const ALLOWED_ORIGIN = process.env.WEB_ORIGIN || '*';
+// WEB_ORIGIN может быть одним доменом ("https://inwell.uz") или списком
+// через запятую ("https://inwell.uz,https://www.inwell.uz"), если позже
+// понадобится разрешить ещё один origin — без изменений кода.
+const rawOrigin = process.env.WEB_ORIGIN || '*';
+const ALLOWED_ORIGIN = rawOrigin.includes(',')
+  ? rawOrigin.split(',').map((o) => o.trim()).filter(Boolean)
+  : rawOrigin;
 
 app.use(cors({ origin: ALLOWED_ORIGIN }));
 app.use(express.json({ limit: '256kb' }));

@@ -1,7 +1,9 @@
 import { supabase } from './supabaseClient';
 import type { AuditListItem, Company, CreateAuditInput, AuditResultsResponse } from './types';
 
-const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:4000';
+// См. пояснение в audit/api.ts — "" осознанно значит "тот же origin",
+// поэтому "??", а не "||".
+const API_BASE = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:4000';
 
 export class CorporateApiError extends Error {
   status: number;

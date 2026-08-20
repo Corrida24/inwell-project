@@ -31,6 +31,126 @@ export const uz: Content = {
     ctaSecondary: "Hisobot namunasini ko'rish",
   },
 
+  corporatePlatform: {
+    hero: {
+      badge: "Korporativ wellness-platforma",
+      titleLine1: "Sog'lom xodimlar.",
+      titleHighlight: "Kuchliroq biznes.",
+      subtitle: "Jamoa salomatligi va jalb qilinganligini boshqarish platformasi.",
+      pilotBadge: "Bepul pilot — 100 tagacha xodim",
+      ctaPrimary: "Bepul pilot so'rash",
+      ctaSecondary: "Fit Audit'ni ko'rish",
+      dashboardLabel: "Inwell Dashboard",
+      dimensions: [
+        { key: "physical", label: "Physical" },
+        { key: "mental", label: "Mental" },
+        { key: "satisfaction", label: "Satisfaction" },
+        { key: "sleep", label: "Sleep" },
+      ],
+    },
+    problem: {
+      title: "Jamoa salomatligi haqidagi umumiy manzara nimalardan tashkil topadi",
+      items: [
+        { key: "physical", label: "Physical health" },
+        { key: "mental", label: "Mental wellbeing" },
+        { key: "satisfaction", label: "Job satisfaction" },
+        { key: "stress", label: "Stress levels" },
+      ],
+    },
+    concept: {
+      title: "Bu qanday ishlaydi",
+      steps: [
+        { key: "create", title: "Create", actor: "HR", micro: "+ Yangi audit" },
+        { key: "send", title: "Send", actor: "Xodimlar", micro: "Havola yuborildi" },
+        { key: "collect", title: "Collect", actor: "Anonim", micro: "Ismlarsiz" },
+        { key: "analyze", title: "Analyze", actor: "Dashboard", micro: "Hisobot tayyor" },
+      ],
+    },
+    modulesTitle: "Platforma modullari",
+    modulesSubtitle: "Fit Audit allaqachon ishlaydi. Qolganlari — ishlab chiqilmoqda.",
+    statusLive: "Mavjud",
+    statusSoon: "Tez orada",
+    modules: [
+      {
+        key: "fitAudit",
+        title: "Physical Fitness Audit",
+        description: "Jismoniy holatni baholash.",
+        status: "live",
+        cta: "Batafsil",
+      },
+      {
+        key: "mental",
+        title: "Mental Wellbeing",
+        description: "Stress darajasi va komfort.",
+        status: "soon",
+      },
+      {
+        key: "satisfaction",
+        title: "Job Satisfaction",
+        description: "Jalb qilinganlik va jarayonlar.",
+        status: "soon",
+      },
+      {
+        key: "nutrition",
+        title: "Nutrition & Habits",
+        description: "Oziq-ovqat odatlari va turmush tarzi.",
+        status: "soon",
+      },
+      {
+        key: "sleep",
+        title: "Sleep & Recovery",
+        description: "Uyqu sifati va energiya darajasi.",
+        status: "soon",
+      },
+    ],
+    trust: {
+      items: [
+        { key: "anonymous", label: "Shaxssizlashtirilgan", desc: "Ism va familiyasiz" },
+        { key: "confidential", label: "Konfidensial", desc: "Ma'lumotlar himoyalangan" },
+        { key: "aggregated", label: "Agregatsiyalangan hisobotlar", desc: "Faqat jamoa bo'yicha" },
+      ],
+    },
+    timeToValue: {
+      items: [
+        { key: "launch", title: "1 soatda ishga tushirish", desc: "Murakkab IT-integratsiyasiz, murojaat kuni boshlanadi." },
+        { key: "live", title: "Live-tahlil", desc: "Ma'lumotlar va statistika — real vaqt rejimida." },
+        { key: "validation", title: "Soxta ma'lumotlardan himoya", desc: "Ishonchlilik uchun ma'lumotlar avtomatik tekshiriladi." },
+      ],
+    },
+    employeeView: {
+      title: "Xodim nimani ko'radi",
+      subtitle: "Baholash va taqqoslash bilan shaxsiy kabinet, boshqalarning ma'lumotlarisiz.",
+      chromeLabel: "Mening hisobotim",
+      scoreCaption: "INWELL SCORE",
+      companyLabel: "Hamkasblar orasida",
+      companyValue: "65% dan yuqori",
+      groupLabel: "Sizning guruhingiz",
+      groupValue: "58% dan yuqori",
+    },
+    faq: {
+      title: "Ko'p beriladigan savollar",
+      items: [
+        { q: "Xodimlar ma'lumotlarining anonimligi qanday kafolatlanadi?", a: "HR faqat jamoa bo'yicha agregatsiyalangan statistikani ko'radi — ism, familiya va shaxsga bog'liqliksiz." },
+        { q: "Platformani joriy jarayonlarga joriy qilish qanchalik murakkab?", a: "IT-integratsiya shart emas — HR havola yaratadi va xodimlarga yuboradi, qolgani onlayn." },
+        { q: "Xodimda baholash qancha vaqt oladi?", a: "O'rtacha 10 daqiqa — oddiy santimetrli lenta va tarozi, maxsus asbob-uskunasiz." },
+        { q: "Bepul pilotdan keyin narx qanday shakllanadi?", a: "Xodimlar soni va tanlangan modullar bo'yicha — aniq hisob-kitobni pilotdan keyin yuboramiz, bungacha hech narsa to'lanmaydi." },
+      ],
+    },
+    contactsHeading: {
+      pre: "Savollaringiz bormi —",
+      highlight: "bizga yozing",
+      post: "",
+      subtitle: "Javob beramiz va pilotni ishga tushirishga yordam beramiz.",
+      cta: "Bepul pilot so'rash",
+    },
+    pilot: {
+      title: "Bepul pilot",
+      subtitle: "100 tagacha xodim — bepul.",
+      bullets: ["100 tagacha xodim bepul", "Onlayn, ofisga chiqmasdan", "HR uchun shaxssizlashtirilgan tahlil", "Xodimlarning shaxsiy ma'lumotlarisiz"],
+      cta: "Bepul pilot so'rash",
+    },
+  },
+
   problem: {
     badge: "Biznes uchun xavflar",
     headingPre: "Yomon jismoniy holat ish haqi fondi va foydaga",
@@ -541,6 +661,12 @@ export const uz: Content = {
       statsPrefix: "Tahlildan allaqachon oʻtganlar:",
       statsSuffix: "kishi",
       perks: ["100% bepul", "Ism va familiyasiz", "Shaxsiy maʼlumotlarsiz", "Atigi 10 daqiqa", "20 ta koʻrsatkich", "Saqlash bepul"],
+      heroMock: {
+        chromeLabel: "Mening hisobotim",
+        scoreCaption: "INWELL SCORE",
+        groupLabel: "Sizning guruhingiz",
+        inwellLabel: "Inwell foydalanuvchilari",
+      },
     },
 
     why: {
@@ -552,6 +678,33 @@ export const uz: Content = {
         { title: "Obyektiv manzara olish", desc: "Taxminlarsiz — faqat aniq oʻlchovlar va hisoblangan koʻrsatkichlar.", iconName: "Gauge" },
         { title: "Mashqlar samarasini kuzatish", desc: "Bir necha hafta va oydan keyin oʻzingiz ustida ishlash natijasini tekshiring.", iconName: "Repeat2" },
       ],
+    },
+
+    how: {
+      title: "Bu qanday ishlaydi",
+      steps: [
+        { key: "enter", title: "Parametrlarni kiriting", actor: "Siz", micro: "5 daqiqa", iconName: "ClipboardList" },
+        { key: "calculate", title: "Bahoni oling", actor: "Inwell", micro: "20+ koʻrsatkich", iconName: "Gauge" },
+        { key: "track", title: "Progressni kuzating", actor: "Siz", micro: "Har oy", iconName: "TrendingUp" },
+      ],
+    },
+
+    faq: {
+      title: "Koʻp beriladigan savollar",
+      items: [
+        { q: "Bu haqiqatan ham bepulmi?", a: "Ha, asosiy hisobot doim bepul — yashirin toʻlovlar va obunalarsiz." },
+        { q: "Maxsus uskuna kerakmi?", a: "Yoʻq, uyda oddiy santimetr lenta va tarozi yetarli." },
+        { q: "Maʼlumotlarim qayerga boradi?", a: "Maʼlumotlar faqat hisobotingizni hisoblash uchun ishlatiladi — ism-familiyasiz." },
+        { q: "Keyinroq qayta topshirish mumkinmi?", a: "Ha — va oʻshanda oldingi natija bilan solishtirilgan progressni koʻrasiz." },
+      ],
+    },
+
+    contactsHeading: {
+      pre: "Savollaringiz bormi —",
+      highlight: "bizga yozing",
+      post: "",
+      subtitle: "Javob beramiz va hisobotni tushunishga yordam beramiz.",
+      cta: "Bizga yozish",
     },
 
     form: {

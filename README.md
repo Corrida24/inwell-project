@@ -101,10 +101,8 @@ Creates a Supabase Auth user and the corresponding company record. Share the res
 
 Any Linux VPS with Node.js works; PostgreSQL does not need to be self-hosted since the database is always Supabase.
 
-- **Docker** — populate `apps/api/.env` and `apps/web/.env` with production values, then `docker compose up -d --build`, and place a reverse proxy with HTTPS (Caddy, Nginx, etc.) in front of ports 8080 (web) and 4000 (api).
-- **Without Docker** — `npm run build` in both `apps/api` and `apps/web`; serve `apps/web/dist` as static files, and run `apps/api` with a process manager (pm2, systemd).
-
-The frontend's environment variables (`VITE_API_BASE_URL`, `VITE_SUPABASE_URL`, `VITE_SUPABASE_PUBLISHABLE_KEY`) are baked into the static build at `vite build` time — set them before building, not after.
+- **Docker (recommended)** — populate `apps/api/.env` with production values, then `docker compose up -d --build`. No domain needs to be set anywhere in `docker-compose.yml`: the web container's nginx proxies `/api/*` to the api container over the internal docker network (see `apps/web/nginx.conf`), so the frontend always calls its own origin — same commands work under `inwell.uz`, a bare server IP, or any other domain without editing the compose file. Put a reverse proxy with HTTPS (Caddy, Nginx, etc.) on the host in front of port 8080 for `inwell.uz`; the api's port 4000 does not need to be exposed publicly. `WEB_ORIGIN` in `docker-compose.yml` (used only for the CORS header, not for routing) is already set to `https://inwell.uz`.
+- **Without Docker** — `npm run build` in both `apps/api` and `apps/web`; serve `apps/web/dist` as static files, and run `apps/api` with a process manager (pm2, systemd). Since there's no nginx proxy in this path, set `VITE_API_BASE_URL` to the API's real public URL (e.g. `https://inwell.uz/api` if you put your own reverse-proxy rule in front of it, or `https://api.inwell.uz`) before running `npm run build` for the frontend — the frontend's environment variables (`VITE_API_BASE_URL`, `VITE_SUPABASE_URL`, `VITE_SUPABASE_PUBLISHABLE_KEY`) are baked into the static build at `vite build` time.
 
 ## Roadmap
 

@@ -32,7 +32,9 @@ export const Header: React.FC = () => {
   // /corporate/login, /corporate/dashboard, /corporate/audits/* — уже
   // "внутри" корпоративного приложения (залогинен или логинится), там
   // нет смысла показывать "Войти"/"Связаться" маркетинговые CTA поверх.
-  const isCorporateApp = location.pathname.startsWith('/corporate/');
+  // /corporate/fit-audit — НЕ приложение, это публичный маркетинговый
+  // лендинг модуля (бывшая главная /corporate), CTA там нужны как обычно.
+  const isCorporateApp = /^\/corporate\/(login|dashboard|audits)/.test(location.pathname);
   const [scrolled, setScrolled] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
 
@@ -61,13 +63,13 @@ export const Header: React.FC = () => {
 
   const ModeSwitch = ({ full = false }: { full?: boolean }) => (
     <div className={`inline-flex items-center gap-0.5 bg-slate-100/80 rounded-full p-1 ${full ? 'w-full' : ''}`}>
-      <NavLink to="/personal" className={() => modeTabClass(isPersonal) + (full ? ' flex-1' : '')}>
-        <Users className="w-3.5 h-3.5" />
-        <span>{t.modeSwitch.peopleShort}</span>
-      </NavLink>
       <NavLink to="/corporate" className={() => modeTabClass(!isPersonal) + (full ? ' flex-1' : '')}>
         <Building2 className="w-3.5 h-3.5" />
         <span>{t.modeSwitch.businessShort}</span>
+      </NavLink>
+      <NavLink to="/personal" className={() => modeTabClass(isPersonal) + (full ? ' flex-1' : '')}>
+        <Users className="w-3.5 h-3.5" />
+        <span>{t.modeSwitch.peopleShort}</span>
       </NavLink>
     </div>
   );

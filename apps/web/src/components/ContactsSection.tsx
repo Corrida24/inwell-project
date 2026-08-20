@@ -8,10 +8,23 @@ import { Reveal, RevealStagger, RevealItem } from './ui/Reveal';
 
 const CHANNEL_ICONS = [Phone, Send, Send, Instagram];
 
-export const ContactsSection: React.FC = () => {
+interface ContactsSectionProps {
+  /** По умолчанию — заголовок/подзаголовок/CTA конкретно про Fit-Audit (как
+   * на /corporate/fit-audit, где есть калькулятор тарифов выше). На
+   * /corporate (платформа целиком) эти же контакты нужны с более общим
+   * текстом — без ссылки на "калькулятор выше", которого на той странице
+   * нет, и с CTA про пилот, а не про Fit-Audit конкретно. */
+  headingOverride?: { pre: string; highlight: string; post: string; subtitle: string; cta?: string };
+}
+
+export const ContactsSection: React.FC<ContactsSectionProps> = ({ headingOverride }) => {
   const { t } = useLanguage();
   const { open: openContacts } = useContactsModal();
   const c = t.contactsSection;
+  const heading = headingOverride
+    ? { pre: headingOverride.pre, highlight: headingOverride.highlight, post: headingOverride.post, subtitle: headingOverride.subtitle }
+    : { pre: c.headingPre, highlight: c.headingHighlight, post: c.headingPost, subtitle: c.subtitle };
+  const ctaLabel = headingOverride?.cta ?? c.ctaPrimary;
 
   const channels = c.channels.map((ch, idx) => {
     let href = '#';
@@ -41,18 +54,18 @@ export const ContactsSection: React.FC = () => {
       <div className="max-w-5xl mx-auto px-5 sm:px-6 relative z-10">
         <Reveal className="text-center max-w-2xl mx-auto mb-6 sm:mb-10 space-y-2 sm:space-y-3">
           <h2 className="text-2xl sm:text-3xl font-bold text-slate-900 tracking-tight">
-            {c.headingPre}{' '}
+            {heading.pre}{' '}
             <span className="bg-gradient-to-r from-brand-blue via-brand-blue-light to-brand-teal bg-clip-text text-transparent">
-              {c.headingHighlight}
+              {heading.highlight}
             </span>{' '}
-            {c.headingPost}
+            {heading.post}
           </h2>
-          <p className="text-slate-600 text-sm sm:text-base leading-relaxed">{c.subtitle}</p>
+          <p className="text-slate-600 text-sm sm:text-base leading-relaxed">{heading.subtitle}</p>
           <button
             onClick={openContacts}
             className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-brand-blue hover:bg-brand-blue-light text-white font-bold text-sm transition-all shadow-lg shadow-blue-500/25 active:scale-95"
           >
-            <span>{c.ctaPrimary}</span>
+            <span>{ctaLabel}</span>
             <ArrowRight className="w-4 h-4" />
           </button>
         </Reveal>

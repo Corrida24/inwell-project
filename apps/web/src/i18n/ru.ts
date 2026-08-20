@@ -31,6 +31,126 @@ export const ru = {
     ctaSecondary: "Посмотреть пример отчёта",
   },
 
+  corporatePlatform: {
+    hero: {
+      badge: "Корпоративная wellness-платформа",
+      titleLine1: "Здоровые сотрудники.",
+      titleHighlight: "Сильнее бизнес.",
+      subtitle: "Платформа для системного управления здоровьем и вовлечённостью команды.",
+      pilotBadge: "Бесплатный пилот — до 100 сотрудников",
+      ctaPrimary: "Запросить бесплатный пилот",
+      ctaSecondary: "Смотреть Fit Audit",
+      dashboardLabel: "Inwell Dashboard",
+      dimensions: [
+        { key: "physical", label: "Physical" },
+        { key: "mental", label: "Mental" },
+        { key: "satisfaction", label: "Satisfaction" },
+        { key: "sleep", label: "Sleep" },
+      ],
+    },
+    problem: {
+      title: "Что складывается в общую картину здоровья команды",
+      items: [
+        { key: "physical", label: "Physical health" },
+        { key: "mental", label: "Mental wellbeing" },
+        { key: "satisfaction", label: "Job satisfaction" },
+        { key: "stress", label: "Stress levels" },
+      ],
+    },
+    concept: {
+      title: "Как это работает",
+      steps: [
+        { key: "create", title: "Create", actor: "HR", micro: "+ Новый аудит" },
+        { key: "send", title: "Send", actor: "Сотрудники", micro: "Ссылка отправлена" },
+        { key: "collect", title: "Collect", actor: "Анонимно", micro: "Без имён" },
+        { key: "analyze", title: "Analyze", actor: "Дашборд", micro: "Отчёт готов" },
+      ],
+    },
+    modulesTitle: "Модули платформы",
+    modulesSubtitle: "Fit Audit уже работает. Остальное — в разработке.",
+    statusLive: "Доступно",
+    statusSoon: "Скоро",
+    modules: [
+      {
+        key: "fitAudit",
+        title: "Physical Fitness Audit",
+        description: "Оценка физического состояния.",
+        status: "live",
+        cta: "Подробнее",
+      },
+      {
+        key: "mental",
+        title: "Mental Wellbeing",
+        description: "Уровень стресса и комфорта.",
+        status: "soon",
+      },
+      {
+        key: "satisfaction",
+        title: "Job Satisfaction",
+        description: "Вовлечённость и процессы.",
+        status: "soon",
+      },
+      {
+        key: "nutrition",
+        title: "Nutrition & Habits",
+        description: "Пищевые привычки и образ жизни.",
+        status: "soon",
+      },
+      {
+        key: "sleep",
+        title: "Sleep & Recovery",
+        description: "Качество сна и уровень энергии.",
+        status: "soon",
+      },
+    ],
+    trust: {
+      items: [
+        { key: "anonymous", label: "Обезличенно", desc: "Без имён и фамилий" },
+        { key: "confidential", label: "Конфиденциально", desc: "Данные защищены" },
+        { key: "aggregated", label: "Агрегированные отчёты", desc: "Только по команде" },
+      ],
+    },
+    timeToValue: {
+      items: [
+        { key: "launch", title: "Запуск за 1 час", desc: "Без сложной IT-интеграции, старт в день обращения." },
+        { key: "live", title: "Live-аналитика", desc: "Сбор данных и статистика — в реальном времени." },
+        { key: "validation", title: "Защита от фейков", desc: "Автоматическая валидация данных для достоверности." },
+      ],
+    },
+    employeeView: {
+      title: "Что видит сотрудник",
+      subtitle: "Личный кабинет с оценкой и сравнением, без данных других людей.",
+      chromeLabel: "Мой отчёт",
+      scoreCaption: "INWELL SCORE",
+      companyLabel: "Среди коллег",
+      companyValue: "Выше 65%",
+      groupLabel: "Ваша группа",
+      groupValue: "Выше 58%",
+    },
+    faq: {
+      title: "Частые вопросы",
+      items: [
+        { q: "Как гарантируется анонимность данных сотрудников?", a: "HR видит только агрегированную статистику по команде — без имён, фамилий и привязки к конкретному человеку." },
+        { q: "Насколько сложно внедрить платформу в текущие процессы?", a: "Не нужна IT-интеграция — HR создаёт ссылку и отправляет её сотрудникам, всё остальное онлайн." },
+        { q: "Сколько времени занимает оценка у сотрудника?", a: "В среднем 10 минут — обычная сантиметровая лента и весы, без специального оборудования." },
+        { q: "Как формируется стоимость после бесплатного пилота?", a: "По числу сотрудников и выбранным модулям — точный расчёт присылаем после пилота, до этого ничего не оплачивается." },
+      ],
+    },
+    contactsHeading: {
+      pre: "Есть вопросы —",
+      highlight: "напишите нам",
+      post: "",
+      subtitle: "Ответим и поможем запустить пилот.",
+      cta: "Запросить бесплатный пилот",
+    },
+    pilot: {
+      title: "Бесплатный пилот",
+      subtitle: "До 100 сотрудников — без оплаты.",
+      bullets: ["До 100 сотрудников бесплатно", "Онлайн, без выезда в офис", "Обезличенная аналитика для HR", "Без личных данных сотрудников"],
+      cta: "Запросить бесплатный пилот",
+    },
+  },
+
   problem: {
     badge: "Риски для бизнеса",
     headingPre: "Плохая физическая форма бьёт по",
@@ -543,6 +663,12 @@ export const ru = {
       statsPrefix: "Уже прошли анализ:",
       statsSuffix: "человек",
       perks: ["100% бесплатно", "Без имени и фамилии", "Без личных данных", "Буквально 10 минут", "20 показателей", "Сохранение бесплатно"],
+      heroMock: {
+        chromeLabel: "Мой отчёт",
+        scoreCaption: "INWELL SCORE",
+        groupLabel: "Ваша группа",
+        inwellLabel: "Пользователи Inwell",
+      },
     },
 
     why: {
@@ -554,6 +680,33 @@ export const ru = {
         { title: "Получить объективную картину", desc: "Никаких догадок — только точные измерения и расчётные показатели.", iconName: "Gauge" },
         { title: "Отследить эффект тренировок", desc: "Проверяйте результат работы над собой спустя недели и месяцы.", iconName: "Repeat2" },
       ],
+    },
+
+    how: {
+      title: "Как это работает",
+      steps: [
+        { key: "enter", title: "Введите параметры", actor: "Вы", micro: "5 минут", iconName: "ClipboardList" },
+        { key: "calculate", title: "Получите оценку", actor: "Inwell", micro: "20+ показателей", iconName: "Gauge" },
+        { key: "track", title: "Отслеживайте прогресс", actor: "Вы", micro: "Каждый месяц", iconName: "TrendingUp" },
+      ],
+    },
+
+    faq: {
+      title: "Частые вопросы",
+      items: [
+        { q: "Это точно бесплатно?", a: "Да, базовый отчёт всегда бесплатный — без скрытых платежей и подписок." },
+        { q: "Нужно ли специальное оборудование?", a: "Нет, достаточно обычной сантиметровой ленты и весов дома." },
+        { q: "Куда попадают мои данные?", a: "Данные используются только для расчёта вашего отчёта — без имени и фамилии." },
+        { q: "Можно ли пройти повторно позже?", a: "Да — и тогда вы увидите прогресс по сравнению с прошлым разом." },
+      ],
+    },
+
+    contactsHeading: {
+      pre: "Остались вопросы —",
+      highlight: "напишите нам",
+      post: "",
+      subtitle: "Ответим и поможем разобраться с отчётом.",
+      cta: "Написать нам",
     },
 
     form: {
