@@ -1,5 +1,6 @@
 import { pool } from './pool.js';
 import type { FullReport } from '../calc/computeReport.js';
+import type { QuestionnaireReport } from '../calc/questionnaire/computeQuestionnaireReport.js';
 
 /** Сколько всего корпоративных ответов сохранено, по всем компаниям и
  * аудитам вместе. Используется только для публичного счётчика "уже прошли
@@ -21,9 +22,18 @@ export interface InsertResponseInput {
   region: string;
   age: number;
   gender: 'M' | 'F';
-  activityKey: string;
-  measurements: Record<string, number>;
-  results: FullReport;
+  /** Ровно один из (activityKey+measurements) / answers заполнен, в
+   * зависимости от test_type аудита — оба optional, каждый вызывающий код
+   * (publicAudit.ts) передаёт только свою пару. */
+  activityKey?: string;
+  measurements?: Record<string, number>;
+  answers?: Record<string, number>;
+  results: FullReport | QuestionnaireReport;
+  /** Headline-балл 0-100 для универсальной колонки responses.inwell_score —
+   * раньше бралось напрямую из results.inwellScore (только фитнес-форма),
+   * теперь передаётся явно каждым вызывающим кодом, т.к. у QuestionnaireReport
+   * поле называется иначе (headlineScore). */
+  inwellScore: number;
 }
 
 /**
@@ -62,8 +72,8 @@ export async function insertResponseAtomic(input: InsertResponseInput): Promise<
     }
 
     const insertRes = await client.query<{ id: string }>(
-      `INSERT INTO responses (audit_id, department, region, age, gender, activity_key, measurements, results, inwell_score)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+      `INSERT INTO responses (audit_id, department, region, age, gender, activity_key, measurements, answers, results, inwell_score)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
        RETURNING id`,
       [
         input.auditId,
@@ -71,10 +81,11 @@ export async function insertResponseAtomic(input: InsertResponseInput): Promise<
         input.region,
         input.age,
         input.gender,
-        input.activityKey,
-        JSON.stringify(input.measurements),
+        input.activityKey ?? null,
+        input.measurements ? JSON.stringify(input.measurements) : null,
+        input.answers ? JSON.stringify(input.answers) : null,
         JSON.stringify(input.results),
-        input.results.inwellScore,
+        input.inwellScore,
       ],
     );
 
@@ -97,17 +108,25 @@ export interface SafeResponseRow {
   region: string;
   age: number;
   gender: 'M' | 'F';
-  activityKey: string;
-  results: FullReport;
+  activityKey: string | null;
+  answers: Record<string, number> | null;
+  results: FullReport | QuestionnaireReport;
 }
 
 /** Все ответы аудита (без PII/respondent_id) — размер аудита ограничен 100
  * ответами, поэтому фильтрация/группировка по department/gender/age/region
- * для дашборда делается в коде (routes/corporate.ts), а не в SQL. */
+ * для дашборда делается в коде (corporateAggregation.ts), а не в SQL.
+ * answers добавлено ради агрегата лояльности (промоутеры/критики считаются
+ * из сырого рейтинга, не из headline-балла — см. corporateAggregation.ts). */
 export async function getSafeResponsesForAudit(auditId: string): Promise<SafeResponseRow[]> {
-  const { rows } = await pool.query<{ department: string | null; region: string; age: number; gender: 'M' | 'F'; activity_key: string; results: FullReport }>(
-    `SELECT department, region, age, gender, activity_key, results FROM responses WHERE audit_id = $1 ORDER BY created_at ASC`,
-    [auditId],
-  );
-  return rows.map((r) => ({ department: r.department, region: r.region, age: r.age, gender: r.gender, activityKey: r.activity_key, results: r.results }));
+  const { rows } = await pool.query<{
+    department: string | null;
+    region: string;
+    age: number;
+    gender: 'M' | 'F';
+    activity_key: string | null;
+    answers: Record<string, number> | null;
+    results: FullReport | QuestionnaireReport;
+  }>(`SELECT department, region, age, gender, activity_key, answers, results FROM responses WHERE audit_id = $1 ORDER BY created_at ASC`, [auditId]);
+  return rows.map((r) => ({ department: r.department, region: r.region, age: r.age, gender: r.gender, activityKey: r.activity_key, answers: r.answers, results: r.results }));
 }

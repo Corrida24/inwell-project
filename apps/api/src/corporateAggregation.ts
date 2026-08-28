@@ -1,6 +1,9 @@
 import { METRICS } from './calc/metricsRegistry.js';
 import { METRIC_CONTENT, BAND_LABEL, BODY_FAT_CATEGORY, EXTRA_METRIC_CONTENT } from './calc/content.js';
-import type { Lang } from './calc/computeReport.js';
+import type { FullReport, Lang } from './calc/computeReport.js';
+import type { QuestionnaireReport } from './calc/questionnaire/computeQuestionnaireReport.js';
+import { TEST_LABEL_CONTENT } from './calc/questionnaire/content.js';
+import type { TestType } from './calc/questionnaire/types.js';
 import { AGE_BANDS, ageBandFor, type AgeBandId } from './calc/normsRegistry.js';
 import type { SafeResponseRow } from './db/responsesRepo.js';
 
@@ -74,7 +77,84 @@ function avg(values: number[]): number | null {
   return Math.round((values.reduce((a, b) => a + b, 0) / values.length) * 100) / 100;
 }
 
-function buildGroupAggregate(key: string, label: string, rows: SafeResponseRow[], lang: Lang): GroupAggregate {
+/** Диспетчер по типу теста — фитнес-путь НЕ ИЗМЕНЁН (buildFitnessGroupAggregate,
+ * бывший buildGroupAggregate), остальные 5 типов идут через
+ * buildQuestionnaireGroupAggregate (общий цикл по results.subscales, без
+ * импорта фитнес-реестра метрик). */
+function buildGroupAggregate(key: string, label: string, rows: SafeResponseRow[], testType: TestType, lang: Lang): GroupAggregate {
+  if (testType === 'fitness') {
+    return buildFitnessGroupAggregate(key, label, rows as (SafeResponseRow & { results: FullReport })[], lang);
+  }
+  return buildQuestionnaireGroupAggregate(key, label, rows as (SafeResponseRow & { results: QuestionnaireReport })[], testType, lang);
+}
+
+/** Компанейский агрегат теста на лояльность — НЕ среднее headline-баллов
+ * ответов (0-100), а честная eNPS-подобная формула: доля "промоутеров"
+ * (рейтинг 9-10) минус доля "критиков" (0-6), в диапазоне -100..100. Это
+ * то самое "продаваемое число", ради которого этот тест вообще выбран —
+ * простое среднее было бы менее узнаваемым и менее показательным. Считается
+ * из СЫРОГО рейтинга (row.answers['1']), не из results.headlineScore. */
+function buildLoyaltyMetric(rows: (SafeResponseRow & { results: QuestionnaireReport })[], lang: Lang): { averageScore: number | null; metric: MetricAggregate | null } {
+  const ratings = rows.map((r) => r.answers?.['1']).filter((v): v is number => typeof v === 'number');
+  if (ratings.length === 0) return { averageScore: null, metric: null };
+
+  const promoters = ratings.filter((v) => v >= 9).length;
+  const passives = ratings.filter((v) => v >= 7 && v <= 8).length;
+  const detractors = ratings.filter((v) => v <= 6).length;
+  const total = ratings.length;
+  const eNps = Math.round(((promoters - detractors) / total) * 100);
+
+  const labels =
+    lang === 'uz'
+      ? { promoters: 'Tarafdorlar (9–10)', passives: 'Neytrallar (7–8)', detractors: 'Tanqidchilar (0–6)' }
+      : { promoters: 'Промоутеры (9–10)', passives: 'Нейтралы (7–8)', detractors: 'Критики (0–6)' };
+
+  const distribution = [
+    { level: 2, label: labels.promoters, pct: Math.round((promoters / total) * 100) },
+    { level: 1, label: labels.passives, pct: Math.round((passives / total) * 100) },
+    { level: 0, label: labels.detractors, pct: Math.round((detractors / total) * 100) },
+  ];
+
+  const metric: MetricAggregate = {
+    key: 'nps_distribution',
+    label: lang === 'uz' ? 'Ishtirokchilar taqsimoti' : 'Распределение участников',
+    unit: '',
+    hasCategory: true,
+    average: null,
+    distribution,
+  };
+  return { averageScore: eNps, metric };
+}
+
+/** Общий агрегат для 5 новых тестов — среднее по headline-баллу (кроме
+ * лояльности — см. buildLoyaltyMetric выше) + среднее по каждой подшкале,
+ * встроенное в ТУ ЖЕ форму MetricAggregate/GroupAggregate, что и у фитнеса,
+ * поэтому CorporateAuditResultsPage.tsx рендерит их той же таблицей без
+ * отдельной ветки на фронте. */
+function buildQuestionnaireGroupAggregate(key: string, label: string, rows: (SafeResponseRow & { results: QuestionnaireReport })[], testType: Exclude<TestType, 'fitness'>, lang: Lang): GroupAggregate {
+  const content = TEST_LABEL_CONTENT[lang][testType];
+  const metrics: MetricAggregate[] = [];
+  let averageScore: number | null;
+
+  if (testType === 'loyalty') {
+    const { averageScore: eNps, metric } = buildLoyaltyMetric(rows, lang);
+    averageScore = eNps;
+    if (metric) metrics.push(metric);
+  } else {
+    const scores = rows.map((r) => r.results.headlineScore).filter((v): v is number => v != null);
+    averageScore = avg(scores);
+
+    const subscaleKeys = Array.from(new Set(rows.flatMap((r) => r.results.subscales?.map((s) => s.key) ?? [])));
+    for (const sk of subscaleKeys) {
+      const values = rows.map((r) => r.results.subscales?.find((s) => s.key === sk)?.score).filter((v): v is number => v != null);
+      metrics.push({ key: sk, label: content.subscales[sk] ?? sk, unit: '', hasCategory: false, average: avg(values), distribution: null });
+    }
+  }
+
+  return { key, label, participantCount: rows.length, averageScore, metrics };
+}
+
+function buildFitnessGroupAggregate(key: string, label: string, rows: (SafeResponseRow & { results: FullReport })[], lang: Lang): GroupAggregate {
   const metrics: MetricAggregate[] = METRICS.map((def) => {
     const content = METRIC_CONTENT[lang][def.key];
     const values: number[] = [];
@@ -151,6 +231,11 @@ export interface AuditAggregation {
   participantCount: number;
   availableFilters: AvailableFilters;
   appliedFilters: AuditFilters;
+  /** Локализованная подпись для aggregation.overall.averageScore — "Средний
+   * Inwell Score" для fitness, "Индекс лояльности" и т.п. для остальных
+   * (см. calc/questionnaire/content.ts). Фронт показывает её вместо
+   * захардкоженного "Inwell Score" в таблице результатов. */
+  headlineLabel: string;
   overall: GroupAggregate;
   composition: Composition;
   positiveHighlights: Highlight[];
@@ -186,7 +271,7 @@ function buildHighlights(overall: GroupAggregate, lang: Lang): { positive: Highl
  * человека в выборке 1-100 человек), либо results (уже посчитанный отчёт,
  * той же структуры, что у personal). respondent_id сюда даже не попадает —
  * его нет в SafeResponseRow (см. responsesRepo.ts). */
-export function buildAuditAggregation(allRows: SafeResponseRow[], filters: AuditFilters, lang: Lang = 'ru'): AuditAggregation {
+export function buildAuditAggregation(allRows: SafeResponseRow[], filters: AuditFilters, testType: TestType, lang: Lang = 'ru'): AuditAggregation {
   const availableFilters: AvailableFilters = {
     departments: Array.from(new Set(allRows.map((r) => r.department).filter((d): d is string => !!d && d.trim() !== ''))).sort(),
     genders: Array.from(new Set(allRows.map((r) => r.gender))),
@@ -204,8 +289,9 @@ export function buildAuditAggregation(allRows: SafeResponseRow[], filters: Audit
     return true;
   });
 
-  const overall = buildGroupAggregate('all', 'all', filtered, lang);
+  const overall = buildGroupAggregate('all', 'all', filtered, testType, lang);
   const { positive, attention } = buildHighlights(overall, lang);
+  const headlineLabel = testType === 'fitness' ? (lang === 'uz' ? "O'rtacha Inwell Score" : 'Средний Inwell Score') : TEST_LABEL_CONTENT[lang][testType].headlineLabel;
 
   const genderLabel = (g: string) => (g === 'M' ? (lang === 'uz' ? 'Erkaklar' : 'Мужчины') : lang === 'uz' ? 'Ayollar' : 'Женщины');
 
@@ -217,18 +303,19 @@ export function buildAuditAggregation(allRows: SafeResponseRow[], filters: Audit
   };
 
   const departments = Array.from(new Set(filtered.map((r) => r.department).filter((d): d is string => !!d && d.trim() !== ''))).sort();
-  const byDepartment = departments.map((dep) => buildGroupAggregate(dep, dep, filtered.filter((r) => r.department === dep), lang));
+  const byDepartment = departments.map((dep) => buildGroupAggregate(dep, dep, filtered.filter((r) => r.department === dep), testType, lang));
 
   const genders = Array.from(new Set(filtered.map((r) => r.gender)));
-  const byGender = genders.map((g) => buildGroupAggregate(g, genderLabel(g), filtered.filter((r) => r.gender === g), lang));
+  const byGender = genders.map((g) => buildGroupAggregate(g, genderLabel(g), filtered.filter((r) => r.gender === g), testType, lang));
 
   const ageBandIds = Array.from(new Set(filtered.map((r) => ageBandFor(r.age).id)));
-  const byAgeBand = AGE_BANDS.filter((b) => ageBandIds.includes(b.id)).map((b) => buildGroupAggregate(b.id, b.label, filtered.filter((r) => ageBandFor(r.age).id === b.id), lang));
+  const byAgeBand = AGE_BANDS.filter((b) => ageBandIds.includes(b.id)).map((b) => buildGroupAggregate(b.id, b.label, filtered.filter((r) => ageBandFor(r.age).id === b.id), testType, lang));
 
   return {
     participantCount: filtered.length,
     availableFilters,
     appliedFilters: filters,
+    headlineLabel,
     overall,
     composition,
     positiveHighlights: positive,

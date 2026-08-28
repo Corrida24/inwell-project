@@ -568,9 +568,11 @@ export const uz: Content = {
       back: "Auditlarga",
       nameLabel: "Audit nomi",
       namePlaceholder: "Masalan: Wellness Audit 2026",
+      testTypeLabel: "Xodimlar qaysi testni topshiradi",
       deadlineLabel: "Muddat",
       maxResponsesLabel: "Maksimal javoblar soni",
-      maxResponsesHint: "1 dan 100 gacha.",
+      maxResponsesHint: "15 dan 100 gacha.",
+      maxResponsesTooSmall: "Kamida 15 xodim — kichikroq auditlar ishonchli tahlil bermaydi.",
       maxResponsesTooBig: "Xodimlar soni 100 dan ortiq. Individual narxni loyiha administratorlari bilan muhokama qiling.",
       commentLabel: "Izoh",
       commentPlaceholder: "Ixtiyoriy",
@@ -604,6 +606,8 @@ export const uz: Content = {
       },
       emptyTitle: "Hozircha javoblar yo'q.",
       emptyText: "Havolani xodimlarga yuboring. Ular so'rovnomani topshirgach, bu yerda umumlashtirilgan tahlil paydo bo'ladi.",
+      insufficientDataTitle: "Hozircha javoblar yetarli emas",
+      insufficientDataText: "{min} tadan {count} tasi to'plandi. Chegara yetilganda tahlil paydo bo'ladi — bu kichik tanlanmada alohida xodimlarning anonimligini himoya qiladi.",
       averageScore: "O'rtacha Inwell Score",
       metricsHeading: "Asosiy ko'rsatkichlar",
       averagePrefix: "O'rtacha",
@@ -637,6 +641,7 @@ export const uz: Content = {
       expired: "Ushbu so'rovnomani topshirish muddati tugagan.",
       full: "Ushbu so'rovnomada javoblarning maksimal soniga yetildi.",
       submittedNote: "Javobingiz anonim tarzda kompaniya statistikasiga qo'shildi.",
+      questionsHeading: "Savollar",
       departmentLabel: "Bo'lim",
       departmentPlaceholder: "Bo'limni tanlang",
       departments: {
@@ -654,6 +659,99 @@ export const uz: Content = {
       invalidCredentials: "Email yoki parol noto'g'ri.",
       generic: "Xatolik yuz berdi. Qayta urinib ko'ring.",
     },
+  },
+
+  tests: {
+    likertScaleLabels: ["Mutlaqo rozi emasman", "Ko'proq rozi emasman", "Neytral", "Ko'proq roziman", "To'liq roziman"],
+
+    fitness: {
+      title: "Jismoniy fitnes testi",
+      description: "Xodimlarning jismoniy shakli va tana tuzilishini o'lchaydi: vazn, o'lchamlar, tana tarkibi va hisoblangan sog'liq ko'rsatkichlari.",
+      cadence: "3 oyda bir marta topshirish tavsiya etiladi.",
+    },
+
+    loyalty: {
+      title: "Xodimlar sodiqligi testi",
+      description: "Xodimlarning kompaniyani ish joyi sifatida tavsiya etishga qanchalik tayyorligini ko'rsatadi — jamoadagi umumiy qoniqish va muhitning asosiy ko'rsatkichi.",
+      cadence: "Choraklik topshirish tavsiya etiladi.",
+      ratingQuestion: "Ushbu kompaniyani do'stingizga yoki tanishingizga yaxshi ish joyi sifatida tavsiya qilish ehtimoli qanchalik yuqori?",
+      ratingMinLabel: "Aniq yo'q",
+      ratingMaxLabel: "Aniq ha",
+      openTextLabel: "Bahoingizga nima ta'sir qildi? (ixtiyoriy)",
+      openTextPlaceholder: "Izohingiz",
+      headlineLabel: "Sizning bahoingiz",
+    },
+
+    burnout: {
+      title: "Kuyish testi",
+      description: "Xodimlarda hissiy charchash, distansiyalanish va samaradorlikning pasayishi belgilarini aniqlaydi — professional kuyishning erta signali.",
+      cadence: "Oyiga bir marta topshirish tavsiya etiladi.",
+      headlineLabel: "Kuyish xavfi",
+      questions: [
+        "Ish kuni oxiriga men hissiy jihatdan tamomila charchagan his qilaman.",
+        "Ertalab, ish boshlanmasdan oldin, men allaqachon oldindagi kundan charchayman.",
+        "Oxirgi paytda ish meni avvalgidan ko'ra ko'proq charchatmoqda.",
+        "Ishga qiziqish bilan qarash men uchun avvalgidan qiyinroq bo'lib qoldi.",
+        "Men o'z ishimning natijalariga nisbatan ko'proq befarq bo'lib qoldim.",
+        "Menda ish vazifalari va hamkasblardan uzoqlashish istagi tobora ko'proq paydo bo'lmoqda.",
+        "Ishim haqiqatan ham foyda keltirayotganini his qilish men uchun qiyin.",
+        "Oxirgi paytda avval oson bo'lgan vazifalarni bajarish men uchun qiyinroq.",
+        "Men bajargan ishimdan qoniqishni tobora kamroq his qilaman.",
+      ],
+      subscales: {
+        exhaustion: "Hissiy charchash",
+        cynicism: "Sinizm / distansiyalanish",
+        accomplishment: "Samaradorlikning pasayishi",
+      },
+    },
+
+    turnover: {
+      title: "Ishdan ketish xavfi testi",
+      description: "Xodimlarning kompaniyadan ketishni o'ylash ehtimolini baholaydi — kadrlar oqimi bo'yicha xavf zonalarini oldindan aniqlashga yordam beradi.",
+      cadence: "Oyiga bir marta topshirish tavsiya etiladi.",
+      headlineLabel: "Ishdan ketish xavfi",
+      questions: [
+        "Oxirgi paytda men yangi ish qidirish haqida tobora ko'proq o'ylayapman.",
+        "Men boshqa kompaniyalardagi bo'sh ish o'rinlarini faol kuzatib boraman.",
+        "Men ushbu kompaniyada yaqin bir yil ichida o'sish istiqbolini ko'rmayapman.",
+        "Oxirgi paytda ishdagi qiyinchiliklar menda ishdan ketish istagini uyg'otmoqda.",
+        "Boshqa ish beruvchilarning takliflari menda katta qiziqish uyg'otadi.",
+        "Agar mos imkoniyat paydo bo'lsa, men yaqin oylarda kompaniyadan ketgan bo'lardim.",
+      ],
+    },
+
+    wellbeing: {
+      title: "Umumiy farovonlik testi",
+      description: "Xodimlarning kundalik hayotidagi hissiy va jismoniy farovonlikning umumiy darajasini ko'rsatadi.",
+      cadence: "Oyiga bir marta topshirish tavsiya etiladi.",
+      headlineLabel: "Farovonlik indeksi",
+      questions: [
+        "Oxirgi paytda o'zimni tetik va quvvatga to'la his qilyapman.",
+        "Kundalik hayotimda xotirjamlik va osoyishtalik his qilaman.",
+        "Ertalab dam olgan va energiyaga to'la holda uyg'onaman.",
+        "Kundalik hayotim menga qiziqarli narsalar bilan to'la.",
+        "Umuman olganda, oxirgi paytdagi hayotimdan mamnunman.",
+      ],
+    },
+
+    psychSafety: {
+      title: "Psixologik xavfsizlik testi",
+      description: "Xodimlarning o'z jamoasida qoralanishdan qo'rqmasdan ochiq gapirish, xato qilish va g'oyalar taklif qilish qanchalik qulayligini ko'rsatadi.",
+      cadence: "Choraklik topshirish tavsiya etiladi.",
+      headlineLabel: "Psixologik xavfsizlik indeksi",
+      questions: [
+        "Jamoamda xatolar haqida qoralanishdan qo'rqmasdan ochiq gapirish mumkin.",
+        "Jamoamdagi hamkasblar murakkab masala va muammolarni ko'tarishga tayyor.",
+        "Jamoamda o'zini nokompetent his qilishdan qo'rqmasdan yordam so'rash mumkin.",
+        "Hamkasblarim mening o'ziga xos ko'nikma va hissamni qadrlaydi va hurmat qiladi.",
+        "Men o'z jamoamda xavf-xatarga borishga va yangi g'oyalar taklif qilishga erkinman.",
+        "Jamoamda hech kim boshqalarning sa'y-harakatlarini ataylab izdan chiqarmaydi.",
+        "O'z jamoamda o'zim bo'lishim uchun menga qulay.",
+      ],
+    },
+
+    bandLabels: { low: "Past", medium: "O'rtacha", high: "Yuqori" },
+    confidentialityNote: "Javobingiz anonim: kompaniya sizning ismingizni ko'rmaydi va bu natijani shaxsan siz bilan bog'lay olmaydi — faqat barcha xodimlar bo'yicha umumlashtirilgan statistika.",
   },
 
   common: {
@@ -960,6 +1058,8 @@ export const uz: Content = {
       hideAdditionalMetrics: "Qoʻshimcha koʻrsatkichlarni yashirish",
       showFullDynamics: "Toʻliq dinamikani koʻrsatish",
       hideFullDynamics: "Batafsil dinamikani yashirish",
+      showDetailedBreakdown: "Batafsil tahlilni koʻrsatish (oʻlchamlar va simmetriya)",
+      hideDetailedBreakdown: "Batafsil tahlilni yashirish",
 
       symmetryImproved: "Simmetriya yaxshilandi.",
       symmetryWorsened: "Assimetriya oshdi.",

@@ -3,6 +3,41 @@ import type { RegionId } from './regions';
 export type Gender = 'M' | 'F';
 export type ActivityKey = 'sedentary' | 'light' | 'moderate' | 'heavy' | 'veryHeavy';
 
+/** 'fitness' — существующий тест (FullReport ниже). Остальные 5 — новые
+ * опросники (QuestionnaireReport ниже). Дублирует backend
+ * calc/questionnaire/types.ts::TestType — на фронте нет общего пакета с
+ * бэкендом (тот же приём, что и в corporate/types.ts). */
+export const TEST_TYPES = ['fitness', 'loyalty', 'burnout', 'turnover', 'wellbeing', 'psychSafety'] as const;
+export type TestType = (typeof TEST_TYPES)[number];
+export type QuestionnaireTestKey = Exclude<TestType, 'fitness'>;
+
+export interface SubscaleScore {
+  key: string;
+  score: number;
+}
+
+/** Отчёт по одному из 5 новых тестов — зеркалит backend
+ * calc/questionnaire/computeQuestionnaireReport.ts::QuestionnaireReport. */
+export interface QuestionnaireReport {
+  testKey: QuestionnaireTestKey;
+  measuredAt: string;
+  headlineScore: number;
+  band: 'low' | 'medium' | 'high';
+  positiveDirection: boolean;
+  subscales: SubscaleScore[];
+  openText?: string;
+}
+
+export interface QuestionnaireFormState {
+  department: string;
+  region: RegionId | '';
+  gender: Gender | '';
+  age: string;
+  /** questionId (как строка) -> выбранное значение шкалы. */
+  answers: Record<string, number>;
+  openText: string;
+}
+
 export const DEPARTMENT_KEYS = ['it', 'hr', 'sales', 'marketing', 'finance', 'accounting', 'other'] as const;
 export type DepartmentKey = (typeof DEPARTMENT_KEYS)[number];
 

@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { requireCompanyAuth } from '../corporateAuth.js';
 import { createAuditSchema } from '../corporateValidation.js';
-import { countAuditsForCompany, createAudit, listAuditsForCompany, getAuditForCompany, MAX_AUDITS_PER_COMPANY } from '../db/auditsRepo.js';
+import { countAuditsForCompany, createAudit, listAuditsForCompany, getAuditForCompany, MAX_AUDITS_PER_COMPANY, MIN_RESPONSES_PER_AUDIT } from '../db/auditsRepo.js';
 import { getSafeResponsesForAudit } from '../db/responsesRepo.js';
 import { buildAuditAggregation, type AuditFilters } from '../corporateAggregation.js';
 
@@ -39,6 +39,7 @@ corporateRouter.post('/audits', async (req, res) => {
     const audit = await createAudit({
       companyId: req.company!.id,
       name: parsed.data.name,
+      testType: parsed.data.testType,
       deadline: parsed.data.deadline,
       maxResponses: parsed.data.maxResponses,
       comment: parsed.data.comment ? parsed.data.comment : null,
@@ -74,6 +75,14 @@ corporateRouter.get('/audits/:id/results', async (req, res) => {
       return res.status(404).json({ error: 'audit_not_found' });
     }
 
+    // Компании с меньше чем MIN_RESPONSES_PER_AUDIT ответами не получают
+    // агрегированный отчёт — на таких объёмах и агрегаты не показательны,
+    // и разумно защищают отдельного сотрудника от узнаваемости в мелкой
+    // выборке (см. implementation notes / план).
+    if (audit.responseCount < MIN_RESPONSES_PER_AUDIT) {
+      return res.json({ audit, insufficientData: true, responseCount: audit.responseCount, minRequired: MIN_RESPONSES_PER_AUDIT });
+    }
+
     const rows = await getSafeResponsesForAudit(audit.id);
     const filters: AuditFilters = {
       department: typeof req.query.department === 'string' && req.query.department ? req.query.department : undefined,
@@ -85,7 +94,7 @@ corporateRouter.get('/audits/:id/results', async (req, res) => {
       office: typeof req.query.office === 'string' && req.query.office ? req.query.office : undefined,
     };
     const lang = req.query.lang === 'uz' ? 'uz' : 'ru';
-    const aggregation = buildAuditAggregation(rows, filters, lang);
+    const aggregation = buildAuditAggregation(rows, filters, audit.testType, lang);
 
     res.json({ audit, aggregation });
   } catch (err) {

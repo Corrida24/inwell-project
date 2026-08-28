@@ -3,7 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Copy, Check } from 'lucide-react';
 import { useLanguage } from '../i18n/LanguageContext';
 import { createAudit, CorporateApiError } from '../corporate/api';
-import type { AuditListItem } from '../corporate/types';
+import { TEST_TYPES, type AuditListItem, type TestType } from '../corporate/types';
 
 function todayStr(): string {
   const d = new Date();
@@ -16,8 +16,9 @@ export const CorporateCreateAuditPage: React.FC = () => {
   const navigate = useNavigate();
 
   const [name, setName] = useState('');
+  const [testType, setTestType] = useState<TestType>('fitness');
   const [deadline, setDeadline] = useState('');
-  const [maxResponses, setMaxResponses] = useState('20');
+  const [maxResponses, setMaxResponses] = useState('15');
   const [comment, setComment] = useState('');
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [submitting, setSubmitting] = useState(false);
@@ -31,7 +32,7 @@ export const CorporateCreateAuditPage: React.FC = () => {
     if (!deadline) next.deadline = c.required;
     else if (deadline < todayStr()) next.deadline = c.deadlinePast;
     const n = Number(maxResponses);
-    if (!maxResponses || !Number.isInteger(n) || n < 1) next.maxResponses = c.required;
+    if (!maxResponses || !Number.isInteger(n) || n < 15) next.maxResponses = c.maxResponsesTooSmall;
     else if (n > 100) next.maxResponses = c.maxResponsesTooBig;
     setErrors(next);
     return Object.keys(next).length === 0;
@@ -43,7 +44,7 @@ export const CorporateCreateAuditPage: React.FC = () => {
     if (!validate()) return;
     setSubmitting(true);
     try {
-      const { audit } = await createAudit({ name: name.trim(), deadline, maxResponses: Number(maxResponses), comment: comment.trim() || undefined });
+      const { audit } = await createAudit({ name: name.trim(), testType, deadline, maxResponses: Number(maxResponses), comment: comment.trim() || undefined });
       setCreated(audit);
     } catch (err) {
       if (err instanceof CorporateApiError && err.code === 'audit_limit_reached') {
@@ -119,6 +120,21 @@ export const CorporateCreateAuditPage: React.FC = () => {
           </div>
 
           <div>
+            <label className={labelClass}>{c.testTypeLabel}</label>
+            <select value={testType} onChange={(e) => setTestType(e.target.value as TestType)} className={inputClass('testType')}>
+              {TEST_TYPES.map((key) => (
+                <option key={key} value={key}>
+                  {t.tests[key].title}
+                </option>
+              ))}
+            </select>
+            <div className="mt-2 rounded-lg border border-sky-100 bg-sky-50/60 px-3 py-2.5 space-y-1">
+              <p className="text-xs text-slate-600">{t.tests[testType].description}</p>
+              <p className="text-xs font-semibold text-brand-blue">{t.tests[testType].cadence}</p>
+            </div>
+          </div>
+
+          <div>
             <label className={labelClass}>{c.deadlineLabel}</label>
             <input type="date" min={todayStr()} value={deadline} onChange={(e) => setDeadline(e.target.value)} className={inputClass('deadline')} />
             {errors.deadline && <p className={errorClass}>{errors.deadline}</p>}
@@ -126,7 +142,7 @@ export const CorporateCreateAuditPage: React.FC = () => {
 
           <div>
             <label className={labelClass}>{c.maxResponsesLabel}</label>
-            <input type="number" min={1} max={100} value={maxResponses} onChange={(e) => setMaxResponses(e.target.value)} className={inputClass('maxResponses')} />
+            <input type="number" min={15} max={100} value={maxResponses} onChange={(e) => setMaxResponses(e.target.value)} className={inputClass('maxResponses')} />
             <p className="text-xs text-slate-400 mt-1">{c.maxResponsesHint}</p>
             {errors.maxResponses && <p className={errorClass}>{errors.maxResponses}</p>}
           </div>

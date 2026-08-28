@@ -4,7 +4,7 @@ import { InwellBrand } from './InwellBrand';
 import { LanguageSwitcher } from './LanguageSwitcher';
 import { useLanguage } from '../i18n/LanguageContext';
 import { useContactsModal } from './ContactsModalContext';
-import { ArrowUpRight, Users, Building2, LogIn, Menu, X } from 'lucide-react';
+import { ArrowUpRight, Building2, LogIn, Menu, X } from 'lucide-react';
 
 /**
  * Shared header for both site modes. "Для людей" vs "Для бизнеса" is a
@@ -61,15 +61,16 @@ export const Header: React.FC = () => {
       active ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-800'
     }`;
 
+  // Раньше здесь был переключатель "Для бизнеса" / "Для людей" — бизнес
+  // теперь единственный фокус продукта, "Для людей" убран из навигации на
+  // обоих местах рендера (десктоп + мобильный drawer), см. план. /personal/*
+  // маршруты НЕ удалены — по прямой ссылке всё ещё открываются (App.tsx не
+  // менялся), просто на них больше никто не ведёт из хедера.
   const ModeSwitch = ({ full = false }: { full?: boolean }) => (
     <div className={`inline-flex items-center gap-0.5 bg-slate-100/80 rounded-full p-1 ${full ? 'w-full' : ''}`}>
       <NavLink to="/corporate" className={() => modeTabClass(!isPersonal) + (full ? ' flex-1' : '')}>
         <Building2 className="w-3.5 h-3.5" />
         <span>{t.modeSwitch.businessShort}</span>
-      </NavLink>
-      <NavLink to="/personal" className={() => modeTabClass(isPersonal) + (full ? ' flex-1' : '')}>
-        <Users className="w-3.5 h-3.5" />
-        <span>{t.modeSwitch.peopleShort}</span>
       </NavLink>
     </div>
   );
@@ -83,7 +84,7 @@ export const Header: React.FC = () => {
       <div className="max-w-6xl mx-auto px-4 sm:px-6">
         {/* Closed state — fixed-height single row on every breakpoint. */}
         <div className="h-14 md:h-auto md:py-3.5 flex md:grid md:grid-cols-[1fr_auto_1fr] items-center justify-between gap-3">
-          <NavLink to={isPersonal ? '/personal' : '/corporate'} className="flex items-center gap-2.5 group justify-self-start" onClick={() => setMenuOpen(false)}>
+          <NavLink to="/corporate" className="flex items-center gap-2.5 group justify-self-start" onClick={() => setMenuOpen(false)}>
             <img
               src="/logo-single.png"
               alt="Inwell"

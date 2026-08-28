@@ -1,14 +1,21 @@
 import { randomBytes } from 'node:crypto';
 import { pool } from './pool.js';
+import type { TestType } from '../calc/questionnaire/types.js';
 
 export const MAX_AUDITS_PER_COMPANY = 10;
 export const MAX_RESPONSES_PER_AUDIT = 100;
+/** Компании с меньшим числом сотрудников не входят в целевой сегмент — см.
+ * 0004_multi_test_types.sql (та же граница продублирована в DB CHECK как
+ * защита от прямых вставок мимо приложения, но именно это значение —
+ * источник правды для zod-валидации в corporateValidation.ts). */
+export const MIN_RESPONSES_PER_AUDIT = 15;
 
 export type AuditStatus = 'active' | 'full' | 'expired';
 
 export interface AuditListItem {
   id: string;
   name: string;
+  testType: TestType;
   deadline: string; // YYYY-MM-DD
   maxResponses: number;
   comment: string | null;
@@ -36,7 +43,7 @@ export async function countAuditsForCompany(companyId: string): Promise<number> 
 export async function listAuditsForCompany(companyId: string): Promise<AuditListItem[]> {
   const { rows } = await pool.query(
     `SELECT
-       a.id, a.name, a.deadline::text AS deadline, a.max_responses, a.comment, a.public_token, a.created_at,
+       a.id, a.name, a.test_type, a.deadline::text AS deadline, a.max_responses, a.comment, a.public_token, a.created_at,
        count(r.id)::int AS response_count,
        audit_effective_status(a.deadline, a.max_responses, count(r.id)) AS status
      FROM audits a
@@ -49,6 +56,7 @@ export async function listAuditsForCompany(companyId: string): Promise<AuditList
   return rows.map((row) => ({
     id: row.id,
     name: row.name,
+    testType: row.test_type,
     deadline: row.deadline,
     maxResponses: row.max_responses,
     comment: row.comment,
@@ -65,7 +73,7 @@ export async function listAuditsForCompany(companyId: string): Promise<AuditList
 export async function getAuditForCompany(auditId: string, companyId: string): Promise<AuditListItem | null> {
   const { rows } = await pool.query(
     `SELECT
-       a.id, a.name, a.deadline::text AS deadline, a.max_responses, a.comment, a.public_token, a.created_at,
+       a.id, a.name, a.test_type, a.deadline::text AS deadline, a.max_responses, a.comment, a.public_token, a.created_at,
        count(r.id)::int AS response_count,
        audit_effective_status(a.deadline, a.max_responses, count(r.id)) AS status
      FROM audits a
@@ -79,6 +87,7 @@ export async function getAuditForCompany(auditId: string, companyId: string): Pr
   return {
     id: row.id,
     name: row.name,
+    testType: row.test_type,
     deadline: row.deadline,
     maxResponses: row.max_responses,
     comment: row.comment,
@@ -89,18 +98,19 @@ export async function getAuditForCompany(auditId: string, companyId: string): Pr
   };
 }
 
-export async function createAudit(input: { companyId: string; name: string; deadline: string; maxResponses: number; comment: string | null }): Promise<AuditListItem> {
+export async function createAudit(input: { companyId: string; name: string; testType: TestType; deadline: string; maxResponses: number; comment: string | null }): Promise<AuditListItem> {
   const token = generatePublicToken();
   const { rows } = await pool.query(
-    `INSERT INTO audits (company_id, name, deadline, max_responses, comment, public_token)
-     VALUES ($1, $2, $3, $4, $5, $6)
-     RETURNING id, name, deadline::text AS deadline, max_responses, comment, public_token, created_at`,
-    [input.companyId, input.name, input.deadline, input.maxResponses, input.comment, token],
+    `INSERT INTO audits (company_id, name, test_type, deadline, max_responses, comment, public_token)
+     VALUES ($1, $2, $3, $4, $5, $6, $7)
+     RETURNING id, name, test_type, deadline::text AS deadline, max_responses, comment, public_token, created_at`,
+    [input.companyId, input.name, input.testType, input.deadline, input.maxResponses, input.comment, token],
   );
   const row = rows[0];
   return {
     id: row.id,
     name: row.name,
+    testType: row.test_type,
     deadline: row.deadline,
     maxResponses: row.max_responses,
     comment: row.comment,
@@ -114,15 +124,16 @@ export async function createAudit(input: { companyId: string; name: string; dead
 export interface PublicAuditInfo {
   id: string;
   companyName: string;
+  testType: TestType;
   status: AuditStatus;
 }
 
 /** Публичная информация об аудите по токену — без раскрытия company_id/ИНН/
  * количества ответов и прочих внутренних деталей, только то, что нужно
- * форме сотрудника (название компании + статус). */
+ * форме сотрудника (название компании + статус + какой тест проходить). */
 export async function getPublicAuditByToken(token: string): Promise<PublicAuditInfo | null> {
   const { rows } = await pool.query(
-    `SELECT a.id, c.name AS company_name,
+    `SELECT a.id, a.test_type, c.name AS company_name,
        audit_effective_status(a.deadline, a.max_responses, count(r.id)) AS status
      FROM audits a
      JOIN companies c ON c.id = a.company_id
@@ -133,5 +144,5 @@ export async function getPublicAuditByToken(token: string): Promise<PublicAuditI
   );
   const row = rows[0];
   if (!row) return null;
-  return { id: row.id, companyName: row.company_name, status: row.status };
+  return { id: row.id, companyName: row.company_name, testType: row.test_type, status: row.status };
 }

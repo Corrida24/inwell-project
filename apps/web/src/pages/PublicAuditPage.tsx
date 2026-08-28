@@ -2,15 +2,18 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { fillTemplate, useLanguage } from '../i18n/LanguageContext';
 import { IntakeForm } from '../audit/IntakeForm';
+import { QuestionnaireForm } from '../audit/QuestionnaireForm';
 import { Footer } from '../components/Footer';
 import { getPublicAuditInfo, type PublicAuditInfo, type SubmitResult } from '../audit/api';
 import { REPORT_STORAGE_KEY, REPORT_SOURCE_KEY } from '../audit/reportStorage';
 
 /**
  * /a/:token — публичная страница корпоративного опросника, без логина.
- * Переиспользует IntakeForm (mode="corporate") и, после отправки,
- * /personal/report для показа результата — та же форма, тот же отчёт, что и
- * у personal-пользователей (см. IntakeForm.tsx / reportStorage.ts).
+ * Ветвится по info.testType: 'fitness' переиспользует IntakeForm
+ * (mode="corporate") без изменений; остальные 5 типов — новый
+ * QuestionnaireForm. После отправки — в обоих случаях /personal/report для
+ * показа результата (тот же sessionStorage-хендофф, см. reportStorage.ts;
+ * ReportView сам ветвится по result.testType).
  */
 export const PublicAuditPage: React.FC = () => {
   const { token } = useParams<{ token: string }>();
@@ -81,7 +84,11 @@ export const PublicAuditPage: React.FC = () => {
             <h1 className="text-lg sm:text-3xl font-bold text-slate-900 mb-1.5 sm:mb-2">{fillTemplate(cp.invitedBy, { company: info.companyName })}</h1>
             <p className="text-xs sm:text-sm text-slate-500">{t.audit.form.subtitle}</p>
           </div>
-          <IntakeForm mode="corporate" auditToken={token} onResult={handleResult} />
+          {info.testType === 'fitness' ? (
+            <IntakeForm mode="corporate" auditToken={token} onResult={handleResult} />
+          ) : (
+            token && <QuestionnaireForm testKey={info.testType} auditToken={token} onResult={handleResult} />
+          )}
         </div>
       </section>
       <Footer />

@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { ArrowLeft } from 'lucide-react';
-import { useLanguage } from '../i18n/LanguageContext';
+import { useLanguage, fillTemplate } from '../i18n/LanguageContext';
 import { getAuditResults, CorporateApiError } from '../corporate/api';
 import type { AuditResultsResponse, GroupAggregate, CompositionBreakdown } from '../corporate/types';
 
@@ -65,14 +65,34 @@ export const CorporateAuditResultsPage: React.FC = () => {
     );
   }
 
-  const { audit, aggregation } = data;
+  const { audit } = data;
+
+  if (data.insufficientData) {
+    return (
+      <section className="min-h-screen px-5 pt-20 pb-14 bg-white">
+        <div className="max-w-3xl mx-auto">
+          <Link to="/corporate/dashboard" className="inline-flex items-center gap-1.5 text-sm font-semibold text-slate-500 hover:text-brand-blue transition-colors mb-4">
+            <ArrowLeft className="w-4 h-4" />
+            <span>{c.back}</span>
+          </Link>
+          <h1 className="text-lg font-bold text-slate-900 mb-3">{audit.name}</h1>
+          <div className="border border-sky-200 rounded-xl p-6 text-center space-y-1.5">
+            <p className="text-sm font-semibold text-slate-700">{c.insufficientDataTitle}</p>
+            <p className="text-sm text-slate-500">{fillTemplate(c.insufficientDataText, { count: data.responseCount, min: data.minRequired })}</p>
+          </div>
+        </div>
+      </section>
+    );
+  }
+
+  const { aggregation } = data;
   const selectClass =
     'px-2.5 py-1.5 rounded-lg border border-sky-200 bg-white text-xs text-slate-700 focus:outline-none focus:ring-2 focus:ring-brand-teal/40';
 
   const departmentLabel = (key: string) => t.corporate.publicAudit.departments[key as keyof typeof t.corporate.publicAudit.departments] ?? key;
   const regionLabel = (key: string) => t.audit.form.regions[key as keyof typeof t.audit.form.regions] ?? key;
 
-  function MetricsTable({ groups, allLabel }: { groups: GroupAggregate[]; allLabel?: string }) {
+  function MetricsTable({ groups, allLabel, headlineLabel }: { groups: GroupAggregate[]; allLabel?: string; headlineLabel: string }) {
     return (
       <div className="overflow-x-auto border border-sky-200 rounded-xl">
         <table className="w-full text-xs">
@@ -96,7 +116,7 @@ export const CorporateAuditResultsPage: React.FC = () => {
               ))}
             </tr>
             <tr className="border-b border-sky-100">
-              <td className="px-3 py-2 text-slate-600">Inwell Score</td>
+              <td className="px-3 py-2 text-slate-600">{headlineLabel}</td>
               {groups.map((g) => (
                 <td key={g.key} className="px-3 py-2 text-right font-semibold text-slate-900">
                   {g.averageScore ?? '—'}
@@ -183,15 +203,9 @@ export const CorporateAuditResultsPage: React.FC = () => {
           </div>
         </div>
 
-        {audit.responseCount === 0 ? (
-          <div className="border border-sky-200 rounded-xl p-6 text-center space-y-1.5">
-            <p className="text-sm font-semibold text-slate-700">{c.emptyTitle}</p>
-            <p className="text-sm text-slate-500">{c.emptyText}</p>
-          </div>
-        ) : (
-          <>
-            {/* Фильтры — компактные select в один ряд: Город, Офис, Пол, Возраст, Отдел */}
-            <div className="flex flex-wrap gap-2 mb-6">
+        <>
+          {/* Фильтры — компактные select в один ряд: Город, Офис, Пол, Возраст, Отдел */}
+          <div className="flex flex-wrap gap-2 mb-6">
               <select value={region} onChange={(e) => setRegion(e.target.value)} className={selectClass}>
                 <option value="">{c.filters.allRegions}</option>
                 {aggregation.availableFilters.regions.map((r) => (
@@ -310,7 +324,7 @@ export const CorporateAuditResultsPage: React.FC = () => {
                 {/* 3 + 4. Основные показатели + распределение по категориям (в одной таблице — среднее и % в скобках) */}
                 <div>
                   <h2 className="text-sm font-bold text-slate-900 mb-2">{c.metricsHeading}</h2>
-                  <MetricsTable groups={[aggregation.overall]} allLabel={c.tableAll} />
+                  <MetricsTable groups={[aggregation.overall]} allLabel={c.tableAll} headlineLabel={aggregation.headlineLabel} />
                   <p className="text-[11px] text-slate-400 mt-1.5">{c.distributionNote}</p>
                 </div>
 
@@ -318,7 +332,7 @@ export const CorporateAuditResultsPage: React.FC = () => {
                 {aggregation.byDepartment.length > 0 && (
                   <div>
                     <h2 className="text-sm font-bold text-slate-900 mb-2">{c.departmentsHeading}</h2>
-                    <MetricsTable groups={[aggregation.overall, ...aggregation.byDepartment]} allLabel={c.tableAll} />
+                    <MetricsTable groups={[aggregation.overall, ...aggregation.byDepartment]} allLabel={c.tableAll} headlineLabel={aggregation.headlineLabel} />
                   </div>
                 )}
 
@@ -326,7 +340,7 @@ export const CorporateAuditResultsPage: React.FC = () => {
                 {aggregation.byGender.length > 0 && (
                   <div>
                     <h2 className="text-sm font-bold text-slate-900 mb-2">{c.byGenderTitle}</h2>
-                    <MetricsTable groups={aggregation.byGender} />
+                    <MetricsTable groups={aggregation.byGender} headlineLabel={aggregation.headlineLabel} />
                   </div>
                 )}
 
@@ -334,13 +348,12 @@ export const CorporateAuditResultsPage: React.FC = () => {
                 {aggregation.byAgeBand.length > 0 && (
                   <div>
                     <h2 className="text-sm font-bold text-slate-900 mb-2">{c.byAgeTitle}</h2>
-                    <MetricsTable groups={aggregation.byAgeBand} />
+                    <MetricsTable groups={aggregation.byAgeBand} headlineLabel={aggregation.headlineLabel} />
                   </div>
                 )}
               </div>
             )}
-          </>
-        )}
+        </>
       </div>
     </section>
   );

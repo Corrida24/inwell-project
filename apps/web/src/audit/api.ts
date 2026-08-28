@@ -1,4 +1,4 @@
-import type { IntakeFormState, FullReport } from './types';
+import type { IntakeFormState, FullReport, QuestionnaireFormState, QuestionnaireReport, TestType } from './types';
 import type { Lang } from '../i18n/LanguageContext';
 
 // "" (пустая строка, а не undefined) — валидное осознанное значение:
@@ -18,12 +18,17 @@ export class ApiError extends Error {
 }
 
 export interface SubmitResult {
-  report: FullReport;
+  report: FullReport | QuestionnaireReport;
   saved: boolean;
   /** Только для personal (/api/assessments): true, если расчёт привязан к
    * телефону — то есть при следующей отправке с тем же номером можно будет
    * показать "Динамику". Для corporate всегда false/не используется. */
   trackable?: boolean;
+  /** Отсутствует для personal/fitness-ответов (старый формат ответа
+   * бэкенда) — 'fitness' по умолчанию везде, где явно не указано иное.
+   * Позволяет ReportView понять, report — FullReport или
+   * QuestionnaireReport, без структурного угадывания по полям. */
+  testType?: TestType;
 }
 
 function isPhoneEffectivelyEmpty(v: string): boolean {
@@ -63,7 +68,7 @@ export async function submitAssessment(form: IntakeFormState, lang: Lang): Promi
   }
 
   const data = await res.json();
-  return { report: data.report as FullReport, saved: Boolean(data.saved), trackable: Boolean(data.trackable) };
+  return { report: data.report as FullReport, saved: Boolean(data.saved), trackable: Boolean(data.trackable), testType: 'fitness' };
 }
 
 /** Публичный счётчик для hero personal-лендинга — сколько всего расчётов
@@ -83,6 +88,7 @@ export async function getTotalStatsCount(): Promise<number | null> {
 
 export interface PublicAuditInfo {
   companyName: string;
+  testType: TestType;
   status: 'active' | 'full' | 'expired';
 }
 
@@ -133,5 +139,36 @@ export async function submitCorporateResponse(token: string, form: IntakeFormSta
   }
 
   const data = await res.json();
-  return { report: data.report as FullReport, saved: Boolean(data.saved) };
+  return { report: data.report as FullReport, saved: Boolean(data.saved), testType: 'fitness' };
+}
+
+/** Анонимная отправка ответа по опроснику одного из 5 новых тестов
+ * (loyalty/burnout/turnover/wellbeing/psychSafety) — тот же публичный роут,
+ * что и у фитнес-формы (POST /api/audits/:token/responses), но payload
+ * содержит answers вместо измерений. testKey нужен только для формы ответа
+ * на фронте (ReportView) — бэкенд сам знает тип теста по audit.test_type. */
+export async function submitQuestionnaireResponse(token: string, testKey: Exclude<TestType, 'fitness'>, form: QuestionnaireFormState, lang: Lang): Promise<SubmitResult> {
+  const payload = {
+    department: form.department || undefined,
+    region: form.region,
+    gender: form.gender,
+    age: Number(form.age),
+    answers: form.answers,
+    openText: form.openText.trim() || undefined,
+    lang,
+  };
+
+  const res = await fetch(`${API_BASE}/api/audits/${encodeURIComponent(token)}/responses`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    throw new ApiError(body.error || 'request_failed', body.details?.fieldErrors);
+  }
+
+  const data = await res.json();
+  return { report: data.report as QuestionnaireReport, saved: Boolean(data.saved), testType: testKey };
 }

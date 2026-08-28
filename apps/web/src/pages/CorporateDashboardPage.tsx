@@ -114,6 +114,7 @@ export const CorporateDashboardPage: React.FC = () => {
                 <thead>
                   <tr className="border-b border-sky-100 bg-sky-50/50 text-left text-slate-500">
                     <th className="px-3 py-2 font-semibold">{c.table.name}</th>
+                    <th className="px-3 py-2 font-semibold whitespace-nowrap">{c.createAudit.testTypeLabel}</th>
                     <th className="px-3 py-2 font-semibold whitespace-nowrap">{c.table.deadline}</th>
                     <th className="px-3 py-2 font-semibold whitespace-nowrap">{c.table.responses}</th>
                     <th className="px-3 py-2 font-semibold whitespace-nowrap">{c.table.status}</th>
@@ -124,6 +125,7 @@ export const CorporateDashboardPage: React.FC = () => {
                   {audits.map((a) => (
                     <tr key={a.id} className="border-b border-sky-100 last:border-0">
                       <td className="px-3 py-2.5 font-medium text-slate-900">{a.name}</td>
+                      <td className="px-3 py-2.5 text-slate-600 whitespace-nowrap">{t.tests[a.testType].title}</td>
                       <td className="px-3 py-2.5 text-slate-600 whitespace-nowrap">{formatDate(a.deadline)}</td>
                       <td className="px-3 py-2.5 text-slate-600 whitespace-nowrap">
                         {a.responseCount} / {a.maxResponses}

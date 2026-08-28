@@ -4,8 +4,9 @@ import { ArrowUp, ArrowDown, Minus, RotateCcw, Info, ShieldCheck, Activity, Flam
 import { useLanguage, fillTemplate } from '../i18n/LanguageContext';
 import { Footer } from '../components/Footer';
 import { ZoneGauge } from './ZoneGauge';
+import { GenericReportView } from './GenericReportView';
 import type { SubmitResult } from './api';
-import type { FullReport, GaugeSpec, MetricResult, ProgressMetric, RawMeasurementResult } from './types';
+import type { FullReport, GaugeSpec, MetricResult, ProgressMetric, RawMeasurementResult, QuestionnaireReport, QuestionnaireTestKey } from './types';
 
 // ---------------------------------------------------------------------------
 // Вынесено из PersonalReportPage.tsx — вся визуальная часть отчёта (без
@@ -432,9 +433,24 @@ export const ReportView: React.FC<{
   const navigate = useNavigate();
   const r = t.audit.report;
 
-  const activityLabel = useMemo(() => t.audit.form.fields.activity.options[result.report.activityKey], [result, t]);
+  // 5 новых тестов (loyalty/burnout/turnover/wellbeing/psychSafety) идут
+  // через отдельный generic-шаблон (GenericReportView) — этот компонент
+  // остаётся ЕДИНОЙ точкой входа для /personal/report (сохраняется общий
+  // sessionStorage-хендофф из PublicAuditPage/PersonalReportPage), но
+  // делегирует рендер, а не пытается втиснуть 5 разных структур отчёта в
+  // одну фитнес-специфичную вёрстку ниже. См. GenericReportView.tsx.
+  const isQuestionnaire = Boolean(result.testType && result.testType !== 'fitness');
 
-  const report: FullReport = result.report;
+  const activityLabel = useMemo(
+    () => (isQuestionnaire ? '' : t.audit.form.fields.activity.options[(result.report as FullReport).activityKey]),
+    [result, t, isQuestionnaire],
+  );
+
+  if (isQuestionnaire) {
+    return <GenericReportView report={result.report as QuestionnaireReport} testKey={result.testType as QuestionnaireTestKey} />;
+  }
+
+  const report: FullReport = result.report as FullReport;
   const date = formatDate(report.measuredAt);
   const ageLabel = report.referenceAgeLabel;
   const rawByKey = (key: string) => report.rawMeasurements.find((m) => m.key === key);
@@ -602,26 +618,32 @@ export const ReportView: React.FC<{
             </Collapsible>
           </div>
 
-          {/* Раздел 3 — все сырые измерения, с сравнением */}
-          <div>
-            <h2 className="text-base font-bold text-slate-900 mb-1">{fillTemplate(r.measurementsTitle, { date })}</h2>
-            <p className="text-xs text-slate-500 mb-3 sm:mb-4">{r.measurementsSubtitle}</p>
-            <div className="grid grid-cols-2 lg:grid-cols-3 gap-2.5 sm:gap-3">
-              {orderedRaw.map((rm) => (
-                <MeasurementTile key={rm.key} rm={rm} gender={report.gender} ageLabel={ageLabel} progress={report.progress.raw[rm.key] ?? null} />
-              ))}
-            </div>
-          </div>
+          {/* Раздел 3+4 — подробный разбор (сырые измерения + симметрия), за
+              collapsible: обе секции самые "глубокие" в отчёте, по запросу
+              заказчика упрощаем формат отчёта — сворачиваем их в один блок,
+              а не убираем совсем (расчёты и данные не меняются). */}
+          <Collapsible openLabel={r.showDetailedBreakdown} closeLabel={r.hideDetailedBreakdown}>
+            <div className="space-y-6 sm:space-y-10">
+              <div>
+                <h2 className="text-base font-bold text-slate-900 mb-1">{fillTemplate(r.measurementsTitle, { date })}</h2>
+                <p className="text-xs text-slate-500 mb-3 sm:mb-4">{r.measurementsSubtitle}</p>
+                <div className="grid grid-cols-2 lg:grid-cols-3 gap-2.5 sm:gap-3">
+                  {orderedRaw.map((rm) => (
+                    <MeasurementTile key={rm.key} rm={rm} gender={report.gender} ageLabel={ageLabel} progress={report.progress.raw[rm.key] ?? null} />
+                  ))}
+                </div>
+              </div>
 
-          {/* Раздел 4 — симметрия (бицепс + бедро) */}
-          <div>
-            <h2 className="text-base font-bold text-slate-900 mb-1">{r.symmetry.sectionTitle}</h2>
-            <p className="text-xs text-slate-500 mb-3 sm:mb-4">{r.symmetry.sectionSubtitle}</p>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-3.5">
-              <SymmetryBlock pairKey="biceps" data={report.symmetry.biceps} gender={report.gender} ageLabel={ageLabel} />
-              <SymmetryBlock pairKey="thigh" data={report.symmetry.thigh} gender={report.gender} ageLabel={ageLabel} />
+              <div>
+                <h2 className="text-base font-bold text-slate-900 mb-1">{r.symmetry.sectionTitle}</h2>
+                <p className="text-xs text-slate-500 mb-3 sm:mb-4">{r.symmetry.sectionSubtitle}</p>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-3.5">
+                  <SymmetryBlock pairKey="biceps" data={report.symmetry.biceps} gender={report.gender} ageLabel={ageLabel} />
+                  <SymmetryBlock pairKey="thigh" data={report.symmetry.thigh} gender={report.gender} ageLabel={ageLabel} />
+                </div>
+              </div>
             </div>
-          </div>
+          </Collapsible>
 
           {/* Раздел 5 — активность и энергия (один компактный блок) */}
           <div>

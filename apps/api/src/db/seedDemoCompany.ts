@@ -126,6 +126,7 @@ async function main() {
   const audit = await createAudit({
     companyId: company.id,
     name: 'Demo Wellness Audit 2026',
+    testType: 'fitness',
     deadline: deadlineStr,
     maxResponses: Math.max(60, count + 10),
     comment: 'Демо-аудит для проверки corporate dashboard (сгенерирован seedDemoCompany.ts).',
@@ -166,6 +167,7 @@ async function main() {
       activityKey,
       measurements,
       results: report,
+      inwellScore: report.inwellScore,
     });
     inserted++;
   }
