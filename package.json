@@ -1,0 +1,19 @@
+{
+  "name": "inwell",
+  "private": true,
+  "version": "0.1.0",
+  "workspaces": [
+    "apps/api",
+    "apps/web",
+    "packages/shared"
+  ],
+  "scripts": {
+    "build:shared": "npm run build --workspace=packages/shared",
+    "dev:api": "npm run build:shared && npm run dev --workspace=apps/api",
+    "dev:web": "npm run build:shared && npm run dev --workspace=apps/web",
+    "build:api": "npm run build:shared && npm run build --workspace=apps/api",
+    "build:web": "npm run build:shared && npm run build --workspace=apps/web",
+    "test:api": "npm run build:shared && npm run test --workspace=apps/api",
+    "test:api:unit": "npm run build:shared && npm run test:unit --workspace=apps/api"
+  }
+}

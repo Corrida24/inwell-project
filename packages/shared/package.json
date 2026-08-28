@@ -1,0 +1,21 @@
+{
+  "name": "@inwell/shared",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Types shared between apps/api and apps/web that used to be hand-duplicated in three places (see the code review, section 5). apps/web (Vite) and apps/api's dev mode (tsx) can both load .ts source directly, but apps/api's production image runs plain `node dist/index.js` with no TS loader, so this package needs a real build step -- 'main'/'exports' point at compiled dist/, built via the 'build' script (see both Dockerfiles and the root 'postinstall' script, which builds it automatically after `npm install`).",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json"
+  },
+  "devDependencies": {
+    "typescript": "~5.8.2"
+  }
+}

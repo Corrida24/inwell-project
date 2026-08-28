@@ -93,8 +93,12 @@ function buildGroupAggregate(key: string, label: string, rows: SafeResponseRow[]
  * (рейтинг 9-10) минус доля "критиков" (0-6), в диапазоне -100..100. Это
  * то самое "продаваемое число", ради которого этот тест вообще выбран —
  * простое среднее было бы менее узнаваемым и менее показательным. Считается
- * из СЫРОГО рейтинга (row.answers['1']), не из results.headlineScore. */
-function buildLoyaltyMetric(rows: (SafeResponseRow & { results: QuestionnaireReport })[], lang: Lang): { averageScore: number | null; metric: MetricAggregate | null } {
+ * из СЫРОГО рейтинга (row.answers['1']), не из results.headlineScore.
+ *
+ * Exported (was file-private) so it can be unit-tested directly -- see
+ * corporateAggregation.test.ts and the code review, section 2, on this
+ * being exactly the kind of formula a silent bug could break unnoticed. */
+export function buildLoyaltyMetric(rows: (SafeResponseRow & { results: QuestionnaireReport })[], lang: Lang): { averageScore: number | null; metric: MetricAggregate | null } {
   const ratings = rows.map((r) => r.answers?.['1']).filter((v): v is number => typeof v === 'number');
   if (ratings.length === 0) return { averageScore: null, metric: null };
 
@@ -131,7 +135,7 @@ function buildLoyaltyMetric(rows: (SafeResponseRow & { results: QuestionnaireRep
  * встроенное в ТУ ЖЕ форму MetricAggregate/GroupAggregate, что и у фитнеса,
  * поэтому CorporateAuditResultsPage.tsx рендерит их той же таблицей без
  * отдельной ветки на фронте. */
-function buildQuestionnaireGroupAggregate(key: string, label: string, rows: (SafeResponseRow & { results: QuestionnaireReport })[], testType: Exclude<TestType, 'fitness'>, lang: Lang): GroupAggregate {
+export function buildQuestionnaireGroupAggregate(key: string, label: string, rows: (SafeResponseRow & { results: QuestionnaireReport })[], testType: Exclude<TestType, 'fitness'>, lang: Lang): GroupAggregate {
   const content = TEST_LABEL_CONTENT[lang][testType];
   const metrics: MetricAggregate[] = [];
   let averageScore: number | null;

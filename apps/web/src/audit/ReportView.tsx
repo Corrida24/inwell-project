@@ -5,6 +5,8 @@ import { useLanguage, fillTemplate } from '../i18n/LanguageContext';
 import { Footer } from '../components/Footer';
 import { ZoneGauge } from './ZoneGauge';
 import { GenericReportView } from './GenericReportView';
+import { fmt, formatDate, metricDigits } from './reportFormat';
+import { useFitnessReportData } from './useFitnessReportData';
 import type { SubmitResult } from './api';
 import type { FullReport, GaugeSpec, MetricResult, ProgressMetric, RawMeasurementResult, QuestionnaireReport, QuestionnaireTestKey } from './types';
 
@@ -25,25 +27,6 @@ function riskColorForLevel(level: number): string {
   if (level >= 3) return RISK_COLOR.good;
   if (level === 2) return RISK_COLOR.warn;
   return RISK_COLOR.danger;
-}
-
-function fmt(v: number | null, digits = 1, lang = 'ru'): string {
-  if (v === null || Number.isNaN(v)) return '—';
-  return v.toLocaleString(lang === 'uz' ? 'uz-UZ' : 'ru-RU', { minimumFractionDigits: digits, maximumFractionDigits: digits });
-}
-
-function formatDate(iso: string): string {
-  const d = new Date(iso);
-  const dd = String(d.getDate()).padStart(2, '0');
-  const mm = String(d.getMonth() + 1).padStart(2, '0');
-  return `${dd}.${mm}.${d.getFullYear()}`;
-}
-
-function metricDigits(key: string): number {
-  if (key === 'whtr' || key === 'whr') return 2;
-  if (key === 'absi') return 4;
-  if (key === 'bmi') return 1;
-  return 2;
 }
 
 const Collapsible: React.FC<{ openLabel: React.ReactNode; closeLabel: React.ReactNode; defaultOpen?: boolean; children: React.ReactNode }> = ({
@@ -446,58 +429,40 @@ export const ReportView: React.FC<{
     [result, t, isQuestionnaire],
   );
 
+  // Called unconditionally (report is null on the questionnaire path) so
+  // this hook runs on every render regardless of which branch returns --
+  // calling it only after the `isQuestionnaire` early return below would
+  // violate React's Rules of Hooks. Data derivation (DATA_FIELDS,
+  // orderedRaw, progress entries, ...) lives in useFitnessReportData.ts,
+  // separate from the rendering below -- see the code review, section 6,
+  // on this component previously mixing the two in one 800+ line file.
+  const fitnessData = useFitnessReportData(isQuestionnaire ? null : (result.report as FullReport), { activityLabel, lang, r });
+
   if (isQuestionnaire) {
     return <GenericReportView report={result.report as QuestionnaireReport} testKey={result.testType as QuestionnaireTestKey} />;
   }
 
   const report: FullReport = result.report as FullReport;
-  const date = formatDate(report.measuredAt);
-  const ageLabel = report.referenceAgeLabel;
-  const rawByKey = (key: string) => report.rawMeasurements.find((m) => m.key === key);
-
-  const bodyCompositionKeys = ['bmi', 'whtr', 'whr'];
-  const bodyCompositionMetrics = report.metrics.filter((m) => bodyCompositionKeys.includes(m.key));
-  const shapeIndexMetrics = report.metrics.filter((m) => !bodyCompositionKeys.includes(m.key));
-
-  const DATA_FIELDS: { key: string; label: string; value: string; unit?: string }[] = [
-    { key: 'gender', label: r.snapshotGender, value: report.gender === 'M' ? r.genderMale : r.genderFemale },
-    { key: 'age', label: r.snapshotAge, value: String(report.age), unit: r.snapshotAgeUnit },
-    ...['height', 'weight', 'waist', 'hip', 'chest', 'neck', 'bicepsR', 'bicepsL', 'thighR', 'thighL']
-      .map((key) => rawByKey(key))
-      .filter((rm): rm is RawMeasurementResult => !!rm)
-      .map((rm) => ({ key: rm.key, label: rm.label, value: fmt(rm.value, 1, lang), unit: rm.unit })),
-    { key: 'activity', label: r.snapshotActivity, value: activityLabel },
-  ];
-
-  const RAW_ORDER = ['height', 'weight', 'waist', 'hip', 'chest', 'neck', 'bicepsR', 'bicepsL', 'thighR', 'thighL'];
-  const orderedRaw = RAW_ORDER.map((key) => rawByKey(key)).filter((rm): rm is RawMeasurementResult => !!rm);
-
-  const rawProgressEntries = RAW_ORDER.map((key) => ({ key, rm: rawByKey(key), metric: report.progress.raw[key] })).filter((e) => e.rm && e.metric);
-  const METRIC_ORDER = ['bmi', 'whtr', 'whr', 'bai', 'bri', 'absi', 'avi', 'ci', 'vat'];
-  const metricProgressEntries = METRIC_ORDER.map((key) => ({
-    key,
-    m: report.metrics.find((mm) => mm.key === key),
-    metric: report.progress.metrics[key],
-  })).filter((e) => e.m && e.metric);
-  const hasAnyProgress =
-    !report.progress.isFirst &&
-    (rawProgressEntries.length > 0 ||
-      metricProgressEntries.length > 0 ||
-      report.progress.bodyFat ||
-      report.progress.bsa ||
-      report.progress.bmr ||
-      report.progress.tdee ||
-      report.symmetry.thigh.progress ||
-      report.symmetry.biceps.progress ||
-      report.progress.activity);
-
-  const weightProgress = report.progress.raw['weight'];
-  const waistProgress = report.progress.raw['waist'];
-  const bmiProgress = report.progress.metrics['bmi'];
-  const bodyFatProgress = report.progress.bodyFat;
-  const weightRm = rawByKey('weight');
-  const waistRm = rawByKey('waist');
-  const bmiMetric = report.metrics.find((m) => m.key === 'bmi');
+  const {
+    date,
+    ageLabel,
+    bodyCompositionMetrics,
+    shapeIndexMetrics,
+    DATA_FIELDS,
+    RAW_ORDER,
+    orderedRaw,
+    rawProgressEntries,
+    METRIC_ORDER,
+    metricProgressEntries,
+    hasAnyProgress,
+    weightProgress,
+    waistProgress,
+    bmiProgress,
+    bodyFatProgress,
+    weightRm,
+    waistRm,
+    bmiMetric,
+  } = fitnessData;
 
   return (
     <>

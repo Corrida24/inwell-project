@@ -1,0 +1,12 @@
+# Build context for both apps/api/Dockerfile and apps/web/Dockerfile is now
+# the repo root (see docker-compose.yml), replacing the old per-app
+# apps/api/.dockerignore and apps/web/.dockerignore -- Docker only reads one
+# .dockerignore at the root of the build context, so those two are gone and
+# this one covers both images.
+**/node_modules
+**/dist
+.git
+.env
+.env.local
+apps/*/.env
+apps/*/.env.local

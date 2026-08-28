@@ -19,6 +19,10 @@ apps/
   web/   React app — personal landing/report + corporate login/dashboard/results
   api/   Express API — calculations, persistence, aggregation, auth
     src/db/migrations/   Versioned, idempotent SQL migrations, applied in order at API startup
+packages/
+  shared/   Types shared between apps/api and apps/web (TestType/TestKey) — an npm
+            workspace package, not published anywhere; see its package.json.
+package.json               Root of the npm workspace (apps/api, apps/web, packages/shared)
 docker-compose.yml        Runs the application only (api + web); the database is always Supabase
 ```
 
@@ -69,21 +73,26 @@ Web: http://localhost:8080 — API: http://localhost:4000. Database migrations a
 
 ### Run manually
 
+The repo is an npm workspace (`apps/api`, `apps/web`, and `packages/shared` — a small package of types shared between the two, see `packages/shared/package.json`). Install once from the repo root, not from inside each app — `npm install` run standalone inside `apps/api` or `apps/web` will fail to resolve `@inwell/shared`.
+
 ```bash
-# API
-cd apps/api
+# Once, from the repo root
 npm install
-npm run dev          # http://localhost:4000
+
+# API
+npm run dev:api       # http://localhost:4000 (builds packages/shared first)
 
 # Web (separate terminal)
-cd apps/web
-npm install
-npm run dev           # http://localhost:3000
+npm run dev:web        # http://localhost:3000 (builds packages/shared first)
 ```
 
-Run the calculation engine's regression tests independently of the database with `npm test` inside `apps/api`.
+`npm run dev:api` / `npm run dev:web` are thin root-level scripts that build `packages/shared` and then delegate to that workspace's own `dev` script (equivalent to `cd apps/api && npm run dev`, but with the shared package guaranteed to be up to date first). If you edit `packages/shared/src` while both dev servers are already running, rerun `npm run build:shared` from the root so the change is picked up — there's no watch mode for it yet.
+
+Run the calculation engine's regression tests independently of the database with `npm run test:api` from the repo root (or `npm test` inside `apps/api`, once `packages/shared` has been built at least once).
 
 ### Provisioning a company account
+
+Assumes the repo-root `npm install` from *Run manually* above has already been run at least once.
 
 ```bash
 cd apps/api
@@ -102,11 +111,20 @@ Creates a Supabase Auth user and the corresponding company record. Share the res
 Any Linux VPS with Node.js works; PostgreSQL does not need to be self-hosted since the database is always Supabase.
 
 - **Docker (recommended)** — populate `apps/api/.env` with production values, **and** copy the repo-root `.env.example` to a repo-root `.env` with your Supabase `VITE_SUPABASE_URL` / `VITE_SUPABASE_PUBLISHABLE_KEY` (Docker Compose reads this root `.env` automatically to fill the web image's build args — it is separate from `apps/web/.env`, which only `npm run dev` reads; `.dockerignore` deliberately keeps `apps/web/.env` out of the Docker build context). Skipping the root `.env` builds fine but the `/login` page will show "Supabase ещё не настроен". Then `docker compose up -d --build`. No domain needs to be set anywhere in `docker-compose.yml`: the web container's nginx proxies `/api/*` to the api container over the internal docker network (see `apps/web/nginx.conf`), so the frontend always calls its own origin — same commands work under `inwell.uz`, a bare server IP, or any other domain without editing the compose file. Put a reverse proxy with HTTPS (Caddy, Nginx, etc.) on the host in front of port 8080 for `inwell.uz`; the api's port 4000 does not need to be exposed publicly. `WEB_ORIGIN` in `docker-compose.yml` (used only for the CORS header, not for routing) is already set to `https://inwell.uz`.
-- **Without Docker** — `npm run build` in both `apps/api` and `apps/web`; serve `apps/web/dist` as static files, and run `apps/api` with a process manager (pm2, systemd). Since there's no nginx proxy in this path, set `VITE_API_BASE_URL` to the API's real public URL (e.g. `https://inwell.uz/api` if you put your own reverse-proxy rule in front of it, or `https://api.inwell.uz`) before running `npm run build` for the frontend — the frontend's environment variables (`VITE_API_BASE_URL`, `VITE_SUPABASE_URL`, `VITE_SUPABASE_PUBLISHABLE_KEY`) are baked into the static build at `vite build` time.
+
+  Requires the **Docker Compose v2 plugin** (invoked as `docker compose`, no hyphen — every command in this README already uses that form). If the VPS still has the legacy standalone `docker-compose` v1.29 binary, upgrade it: v1 is unmaintained and has a known `ContainerConfig` `KeyError` bug on container recreation that has already caused real deploy failures on this project. Modern Docker Engine installs (`get.docker.com`, or the `docker-compose-plugin` package) include v2 as a CLI plugin automatically; check with `docker compose version` (v1's `docker-compose version` is a separate, older command). Both services also now define a container-level `healthcheck:` in `docker-compose.yml` (`docker compose ps` shows `healthy`/`unhealthy`), and `web` waits for `api` to report healthy before starting.
+- **Without Docker** — from the repo root, `npm install` once, then `npm run build:api` and `npm run build:web` (each builds `packages/shared` first — see *Run manually* above; running `npm run build` directly inside `apps/api`/`apps/web` also works but only after at least one root-level `npm install` has created the `@inwell/shared` workspace link). Serve `apps/web/dist` as static files, and run `apps/api` with a process manager (pm2, systemd) pointed at `apps/api/dist/index.js`. Since there's no nginx proxy in this path, set `VITE_API_BASE_URL` to the API's real public URL (e.g. `https://inwell.uz/api` if you put your own reverse-proxy rule in front of it, or `https://api.inwell.uz`) before running `npm run build:web` — the frontend's environment variables (`VITE_API_BASE_URL`, `VITE_SUPABASE_URL`, `VITE_SUPABASE_PUBLISHABLE_KEY`) are baked into the static build at `vite build` time.
+
+### After every deploy: run the smoke test
+
+```bash
+./scripts/smoke-test.sh https://inwell.uz
+```
+
+Hits the live site through its public domain (not `localhost`, not the container network) and checks the frontend loads, `/api/health` responds, and `/api/stats/total-count` proves the API can actually reach the database — then exits non-zero if anything's wrong. This exists because the one production outage this project has had so far was a reverse-proxy port mismatch that 502'd `/api/` silently until someone happened to try logging in; nothing paged anyone, because nothing was checking. Run it right after `docker compose up -d --build` (or after restarting the process-managed API in the without-Docker path) — a broken deploy should show up in the deploy's own output, not wait for a customer to notice. This is a one-shot post-deploy check, not ongoing monitoring — point a real uptime monitor (e.g. UptimeRobot's free tier) at `https://inwell.uz/api/health` on a schedule for that; nothing in this repo does that today.
 
 ## Roadmap
 
 - Phone/Telegram-based login and a personal account with full measurement history — the schema already has a `telegram_id` column reserved for this.
-- Code-splitting the frontend bundle (currently a single ~830 KB chunk).
 - A mobile layout for the corporate results dashboard (currently desktop-first by design; the personal product and marketing pages are already mobile-responsive).
 - Switching age input to date of birth for exact age calculation (currently a direct age field, a deliberate simplification that does not affect percentile accuracy).

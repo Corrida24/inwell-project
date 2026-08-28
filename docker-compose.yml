@@ -1,7 +1,10 @@
 # Боевой запуск приложения (frontend+backend) одной командой:
 #   docker compose up -d --build
 # Затем один раз применить схему БД:
-#   docker compose run --rm api node dist/db/migrate.js
+#   docker compose run --rm api node apps/api/dist/db/migrate.js
+# (путь изменился на apps/api/dist/... после перехода на npm workspaces —
+# см. apps/api/Dockerfile: рабочая директория образа теперь /app целиком,
+# а не /app как алиас для одного apps/api.)
 #
 # БАЗА ДАННЫХ — ТОЛЬКО Supabase Postgres. Docker здесь запускает исключительно
 # само приложение (api + web), локального Postgres-контейнера больше нет —
@@ -23,7 +26,9 @@
 
 services:
   api:
-    build: ./apps/api
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
     restart: unless-stopped
     env_file:
       - ./apps/api/.env
@@ -40,10 +45,23 @@ services:
     # `docker compose exec api sh` или временно раскомментируйте порт ниже.
     # ports:
     #   - "127.0.0.1:4000:4000"
+    # Не заменяет scripts/smoke-test.sh (тот бьёт через ПУБЛИЧНЫЙ домен и
+    # ловит именно рассинхрон nginx-прокси, который уже один раз ронял
+    # /api/ в проде) — это контейнерный healthcheck для docker/orchestrator,
+    # чтобы `docker compose ps`/`restart: unless-stopped` видели, что api
+    # реально отвечает, а не просто что процесс жив. node:22-alpine не
+    # содержит curl из коробки, поэтому используется wget (есть в busybox).
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://inwell.uz/api/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
 
   web:
     build:
-      context: ./apps/web
+      context: .
+      dockerfile: apps/web/Dockerfile
       # VITE_API_BASE_URL сюда осознанно НЕ передаётся — по умолчанию (см.
       # apps/web/Dockerfile) он собирается пустой строкой, а пустая строка
       # во фронтенд-коде значит "тот же origin", то есть относительные
@@ -62,6 +80,14 @@ services:
         VITE_SUPABASE_PUBLISHABLE_KEY: "${VITE_SUPABASE_PUBLISHABLE_KEY:-}"
     restart: unless-stopped
     depends_on:
-      - api
+      api:
+        condition: service_healthy
+    # web's own healthcheck -- nginx:alpine also ships wget via busybox.
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://inwell.uz/"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
     ports:
       - "8080:80"

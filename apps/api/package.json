@@ -10,9 +10,11 @@
     "migrate": "tsx src/db/migrate.ts",
     "create-company": "tsx src/db/createCompany.ts",
     "seed-demo-company": "tsx src/db/seedDemoCompany.ts",
-    "test": "tsx src/calc/selfTest.ts"
+    "test": "tsx src/calc/selfTest.ts",
+    "test:unit": "vitest run"
   },
   "dependencies": {
+    "@inwell/shared": "*",
     "@supabase/supabase-js": "^2.112.3",
     "cors": "^2.8.5",
     "dotenv": "^17.2.3",
@@ -26,6 +28,7 @@
     "@types/node": "^22.14.0",
     "@types/pg": "^8.11.10",
     "tsx": "^4.21.0",
-    "typescript": "~5.8.2"
+    "typescript": "~5.8.2",
+    "vitest": "^4.1.11"
   }
 }

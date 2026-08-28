@@ -1,10 +1,9 @@
-export type AuditStatus = 'active' | 'full' | 'expired';
+import type { TestType } from '@inwell/shared';
 
-/** 5 новых тестов + существующий фитнес-аудит. Держится в синхроне с
- * apps/api/src/calc/questionnaire/types.ts (TEST_TYPES) — на фронте нет
- * общего пакета с бэкендом, поэтому это ручной, но маленький дубликат. */
-export const TEST_TYPES = ['fitness', 'loyalty', 'burnout', 'turnover', 'wellbeing', 'psychSafety'] as const;
-export type TestType = (typeof TEST_TYPES)[number];
+export type { TestType } from '@inwell/shared';
+export { TEST_TYPES } from '@inwell/shared';
+
+export type AuditStatus = 'active' | 'full' | 'expired';
 
 export interface Company {
   id: string;

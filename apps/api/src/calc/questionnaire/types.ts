@@ -5,19 +5,18 @@
  * backend-only подписи для агрегации: ./content.ts) — тот же принцип
  * разделения "математика / текст", что и metricsRegistry.ts / content.ts
  * для фитнес-теста.
+ *
+ * TEST_KEYS/TestKey/TestType/TEST_TYPES/isQuestionnaireTestKey used to be
+ * hand-duplicated here AND in apps/web/src/corporate/types.ts AND
+ * apps/web/src/audit/types.ts (see code review, section 5). They now live
+ * once in packages/shared and are re-exported from here so every existing
+ * import within apps/api keeps working unchanged.
  */
 
-export const TEST_KEYS = ['loyalty', 'burnout', 'turnover', 'wellbeing', 'psychSafety'] as const;
-export type TestKey = (typeof TEST_KEYS)[number];
+import type { TestKey } from '@inwell/shared';
 
-/** 'fitness' — существующий тест, обрабатывается отдельным (нетронутым)
- * путём через computeFullReport(). Остальные 5 — через этот движок. */
-export type TestType = 'fitness' | TestKey;
-export const TEST_TYPES: TestType[] = ['fitness', ...TEST_KEYS];
-
-export function isQuestionnaireTestKey(v: string): v is TestKey {
-  return (TEST_KEYS as readonly string[]).includes(v);
-}
+export { TEST_KEYS, TEST_TYPES, isQuestionnaireTestKey } from '@inwell/shared';
+export type { TestKey, TestType } from '@inwell/shared';
 
 export interface QuestionDefinition {
   id: number;

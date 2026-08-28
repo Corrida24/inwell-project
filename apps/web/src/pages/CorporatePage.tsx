@@ -2,13 +2,13 @@ import React from 'react';
 import {
   ArrowRight,
   Activity,
-  Brain,
   Heart,
-  Apple,
   Moon,
   Flame,
   Zap,
   TrendingUp,
+  TrendingDown,
+  Shield,
   Wallet,
   Link2,
   ClipboardEdit,
@@ -49,26 +49,35 @@ const TIME_TO_VALUE_ICONS: Record<string, React.ComponentType<{ className?: stri
   anon: Lock,
 };
 
-/** 5 модулей платформы — все РАВНОЗНАЧНЫ (без "доступно"/"скоро"), каждому
- * своя иконка и лёгкий цветовой акцент, чтобы bento-грид не читалась как
- * "один активный + 4 мёртвых", а как 5 полноценных направлений одной
- * платформы. */
+/** 6 модулей платформы (фитнес-тест + 5 селективных опросников, см.
+ * apps/api/src/calc/questionnaire/registry.ts и t.tests.* в i18n) — все
+ * РАВНОЗНАЧНЫ (без "доступно"/"скоро"), каждому своя иконка и лёгкий
+ * цветовой акцент, чтобы bento-грид не читалась как "один активный + N
+ * мёртвых", а как N полноценных направлений одной платформы.
+ *
+ * Ключи здесь ДОЛЖНЫ совпадать с cp.modules[].key, которые, в свою очередь,
+ * идут из TEST_TYPES (packages/shared) через ru.ts/uz.ts -- см. комментарий
+ * там же. Раньше этот список описывал 5 модулей (Physical/Mental/Job
+ * Satisfaction/Nutrition/Sleep), которые НЕ совпадали с реальными
+ * выбираемыми тестами продукта; теперь он зеркалит фактический список. */
 const MODULE_STYLES: Record<string, { icon: React.ComponentType<{ className?: string }>; iconBg: string; iconBorder: string; iconColor: string }> = {
   fitness: { icon: Activity, iconBg: 'bg-teal-50', iconBorder: 'border-teal-200', iconColor: 'text-brand-teal' },
-  mental: { icon: Brain, iconBg: 'bg-indigo-50', iconBorder: 'border-indigo-200', iconColor: 'text-indigo-600' },
-  satisfaction: { icon: Heart, iconBg: 'bg-rose-50', iconBorder: 'border-rose-200', iconColor: 'text-rose-500' },
-  nutrition: { icon: Apple, iconBg: 'bg-amber-50', iconBorder: 'border-amber-200', iconColor: 'text-amber-600' },
-  sleep: { icon: Moon, iconBg: 'bg-sky-50', iconBorder: 'border-sky-200', iconColor: 'text-brand-blue' },
+  loyalty: { icon: Heart, iconBg: 'bg-rose-50', iconBorder: 'border-rose-200', iconColor: 'text-rose-500' },
+  burnout: { icon: Flame, iconBg: 'bg-amber-50', iconBorder: 'border-amber-200', iconColor: 'text-amber-600' },
+  turnover: { icon: TrendingDown, iconBg: 'bg-red-50', iconBorder: 'border-red-200', iconColor: 'text-red-500' },
+  wellbeing: { icon: Moon, iconBg: 'bg-sky-50', iconBorder: 'border-sky-200', iconColor: 'text-brand-blue' },
+  psychSafety: { icon: Shield, iconBg: 'bg-indigo-50', iconBorder: 'border-indigo-200', iconColor: 'text-indigo-600' },
 };
 
 /** Короткие подписи модулей для узкого мокапа "Мой отчёт" (сотрудник) —
  * чтобы не обрезалось на мобильном; полные названия остаются в bento-гриде. */
 const MODULE_SHORT_TITLE: Record<string, string> = {
-  fitness: 'Physical Fitness',
-  mental: 'Mental Wellbeing',
-  satisfaction: 'Job Satisfaction',
-  nutrition: 'Nutrition & Habits',
-  sleep: 'Sleep & Recovery',
+  fitness: 'Физический фитнес',
+  loyalty: 'Лояльность',
+  burnout: 'Выгорание',
+  turnover: 'Риск увольнения',
+  wellbeing: 'Благополучие',
+  psychSafety: 'Психобезопасность',
 };
 
 /** Точный кольцевой индикатор через conic-gradient — переиспользуется в
@@ -260,7 +269,7 @@ export const CorporatePage: React.FC = () => {
         </div>
       </section>
 
-      {/* 4. 5 МОДУЛЕЙ ПЛАТФОРМЫ — равнозначный bento-грид, без статусов */}
+      {/* 4. 6 МОДУЛЕЙ ПЛАТФОРМЫ (фитнес + 5 селективных тестов) — равнозначный bento-грид, без статусов */}
       <section className="py-10 sm:py-16 bg-white">
         <div className="max-w-5xl mx-auto px-5 sm:px-6">
           <Reveal className="text-center mb-6 sm:mb-9 space-y-1.5">
@@ -268,7 +277,7 @@ export const CorporatePage: React.FC = () => {
             <p className="text-sm text-slate-600 max-w-xl mx-auto">{cp.modulesSubtitle}</p>
           </Reveal>
 
-          <RevealStagger className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4">
+          <RevealStagger className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 sm:gap-4">
             {cp.modules.map((m) => {
               const style = MODULE_STYLES[m.key] ?? MODULE_STYLES.fitness;
               const Icon = style.icon;

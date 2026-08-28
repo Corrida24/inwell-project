@@ -14,5 +14,14 @@
     "declaration": false,
     "sourceMap": true
   },
-  "include": ["src"]
+  "include": ["src"],
+  // *.test.ts is excluded from the compiled build (dist/, what ships in the
+  // production Docker image) -- it was previously getting compiled into
+  // dist/**/*.test.js with no functional effect (nothing imports it at
+  // runtime) but unnecessary bloat, once the vitest suite was added. This
+  // exclude also means a bare `tsc -p tsconfig.json` no longer type-checks
+  // test files -- they're still exercised by `npm run test:unit` (vitest)
+  // and by an editor's own per-file language service regardless of this
+  // "exclude" list.
+  "exclude": ["src/**/*.test.ts"]
 }

@@ -38,7 +38,7 @@ export const uz: Content = {
       titleHighlight: "Kuchliroq biznes.",
       question: "Jamoangiz hozir qanday holatda ekanini bilasizmi?",
       subtitle:
-        "Inwell — korporativ wellness-platforma. Jamoa salomatligini 5 asosiy yo'nalish bo'yicha baholang va yagona HR-kabinetda kompleks tahlil oling.",
+        "Inwell — korporativ wellness-platforma. Jamoa salomatligini 6 asosiy yo'nalish bo'yicha baholang va yagona HR-kabinetda kompleks tahlil oling.",
       ctaPrimary: "Ariza qoldirish",
       ctaSecondary: "Bu qanday ishlaydi",
       dashboardLabel: "Inwell Dashboard",
@@ -74,38 +74,52 @@ export const uz: Content = {
         { key: "analyze", number: "04", title: "Analyze", actor: "Kompaniya", micro: "Bo'limlar bo'yicha" },
       ],
     },
-    modulesTitle: "Inwell platformasining 5 yo'nalishi",
+    // Ilgari bu yerda 5 karta bo'lgan (Physical Fitness / Mental Wellbeing /
+    // Job Satisfaction & eNPS / Nutrition & Habits / Sleep & Recovery) —
+    // mahsulotning haqiqiy tanlanadigan testlari bilan mos kelmaydigan
+    // o'ylab topilgan nomlar edi (kod-review, 8-bo'lim). Endi bu yerda
+    // audit yaratishda haqiqatan ham tanlash mumkin bo'lgan 6 ta test bor
+    // (CorporateCreateAuditPage) — fitnes va
+    // apps/api/src/calc/questionnaire/registry.ts dagi 5 tasi, yuqoridagi
+    // t.tests.<key> bilan bir xil nom/tavsif, faqat karta uchun qisqaroq.
+    modulesTitle: "Inwell platformasining 6 yo'nalishi",
     modulesSubtitle: "Barcha modullar — bitta platforma va bitta kompleks jamoa salomatligi indeksining qismi.",
     modules: [
       {
         key: "fitness",
-        title: "Physical Fitness Assessment",
-        description: "Jismoniy holat va faollikni baholash.",
+        title: "Jismoniy fitnes testi",
+        description: "Vazn, o'lchamlar, tana tarkibi va hisoblangan sog'liq ko'rsatkichlari.",
         badge: "18 ko'rsatkich",
       },
       {
-        key: "mental",
-        title: "Mental Wellbeing",
-        description: "Stress, tugab bitish darajasi va komfort.",
-        badge: "Stress darajasi",
-      },
-      {
-        key: "satisfaction",
-        title: "Job Satisfaction & eNPS",
-        description: "Jalb qilinganlik va ish jarayonlari.",
+        key: "loyalty",
+        title: "Sodiqlik testi",
+        description: "Kompaniyani ish joyi sifatida tavsiya etishga tayyorlik.",
         badge: "eNPS indeksi",
       },
       {
-        key: "nutrition",
-        title: "Nutrition & Habits",
-        description: "Oziq-ovqat odatlari va turmush tarzi.",
-        badge: "Oziqlanish odatlari",
+        key: "burnout",
+        title: "Kuyish testi",
+        description: "Hissiy charchash, distansiyalanish, samaradorlik.",
+        badge: "3 sub-shkala",
       },
       {
-        key: "sleep",
-        title: "Sleep & Recovery",
-        description: "Uyqu sifati va energiya darajasi.",
-        badge: "Uyqu sifati",
+        key: "turnover",
+        title: "Ishdan ketish xavfi",
+        description: "Xodimlarning ketishni o'ylash ehtimoli.",
+        badge: "Kadrlar oqimi xavfi",
+      },
+      {
+        key: "wellbeing",
+        title: "Umumiy farovonlik",
+        description: "Kundalik hayotdagi hissiy va jismoniy holat.",
+        badge: "Farovonlik indeksi",
+      },
+      {
+        key: "psychSafety",
+        title: "Psixologik xavfsizlik",
+        description: "Ochiq gapirish, xato qilish, g'oya taklif qilish qulayligi.",
+        badge: "Xavfsizlik indeksi",
       },
     ],
     employeeVsHr: {
@@ -135,7 +149,7 @@ export const uz: Content = {
         bullets: [
           "Dinamik tahlil bilan shaxsiy kabinetga kirish.",
           "Bo'limlar, ofislar va filiallar bo'yicha kompleks salomatlik indeksi.",
-          "5 asosiy modul bo'yicha ko'rsatkichlarni dinamikada solishtirish.",
+          "6 asosiy modul bo'yicha ko'rsatkichlarni dinamikada solishtirish.",
         ],
         privacyBadge: "Tahlil faqat guruhlangan ko'rinishda ko'rsatiladi (shaxsiylashtirmasdan).",
       },
@@ -143,7 +157,7 @@ export const uz: Content = {
     timeToValue: {
       items: [
         { key: "launch", title: "1 soatda ishga tushirish", desc: "Kabinetga kirish huquqini oling va murojaat kuni birinchi testlarni ishga tushiring." },
-        { key: "calc", title: "Murakkab kalkulyatsiya", desc: "5 yo'nalish asosida yagona salomatlik indeksini avtomatik hisoblash." },
+        { key: "calc", title: "Murakkab kalkulyatsiya", desc: "6 yo'nalish asosida yagona salomatlik indeksini avtomatik hisoblash." },
         { key: "anon", title: "100% Anonimlik", desc: "Biz xodimlarning shaxsiy ma'lumotlarini yig'maymiz, HR faqat umumiy tendensiyalarni ko'radi." },
       ],
     },
@@ -151,7 +165,7 @@ export const uz: Content = {
       title: "Ko'p beriladigan savollar",
       items: [
         { q: "Xodimlarning anonimligi qanday kafolatlanadi?", a: "Biz javoblarni ismlarga bog'lamaymiz. HR faqat 10+ kishidan iborat guruhlar bo'yicha agregatsiyalangan hisobotlarni ko'radi." },
-        { q: "Inwell oddiy Google / Typeform formalaridan nimasi bilan farq qiladi?", a: "Oddiy formalar bir martalik quruq javoblar beradi. Inwell 5 modul bo'yicha murakkab kalkulyatsiya o'tkazadi va kompaniyaning uzluksiz salomatlik indeksini quradi." },
+        { q: "Inwell oddiy Google / Typeform formalaridan nimasi bilan farq qiladi?", a: "Oddiy formalar bir martalik quruq javoblar beradi. Inwell 6 modul bo'yicha murakkab kalkulyatsiya o'tkazadi va kompaniyaning uzluksiz salomatlik indeksini quradi." },
         { q: "Xodim testlarni qancha vaqtda topshiradi?", a: "Barcha testlar tez topshirish uchun moslashtirilgan — istalgan qurilmadan 5 dan 7 daqiqagacha." },
         { q: "Bepul pilot qanday ishlaydi?", a: "Biz 100 tagacha xodimli jamoada sinab ko'rish uchun platformaga bepul kirish huquqini ochamiz." },
         { q: "Bepul pilotdan keyin narx qanday shakllanadi?", a: "Narx tizimdagi faol xodimlar soniga bog'liq va tushunarli oylik yoki yillik obuna bo'yicha hisoblanadi." },

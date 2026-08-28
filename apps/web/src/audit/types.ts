@@ -1,14 +1,17 @@
 import type { RegionId } from './regions';
+import type { TestType } from '@inwell/shared';
+
+export type { TestType } from '@inwell/shared';
+export { TEST_TYPES } from '@inwell/shared';
 
 export type Gender = 'M' | 'F';
 export type ActivityKey = 'sedentary' | 'light' | 'moderate' | 'heavy' | 'veryHeavy';
 
-/** 'fitness' — существующий тест (FullReport ниже). Остальные 5 — новые
- * опросники (QuestionnaireReport ниже). Дублирует backend
- * calc/questionnaire/types.ts::TestType — на фронте нет общего пакета с
- * бэкендом (тот же приём, что и в corporate/types.ts). */
-export const TEST_TYPES = ['fitness', 'loyalty', 'burnout', 'turnover', 'wellbeing', 'psychSafety'] as const;
-export type TestType = (typeof TEST_TYPES)[number];
+/** 'fitness' is FullReport below; the other 5 are the questionnaire tests
+ * (QuestionnaireReport below). TestType itself now comes from
+ * packages/shared instead of being duplicated here (see code review,
+ * section 5) -- this file just adds the frontend-only "exclude fitness"
+ * narrowing that's specific to how QuestionnaireReport is shaped. */
 export type QuestionnaireTestKey = Exclude<TestType, 'fitness'>;
 
 export interface SubscaleScore {
