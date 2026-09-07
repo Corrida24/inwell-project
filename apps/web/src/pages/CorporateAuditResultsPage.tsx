@@ -3,7 +3,7 @@ import { Link, useParams } from 'react-router-dom';
 import { ArrowLeft } from 'lucide-react';
 import { useLanguage, fillTemplate } from '../i18n/LanguageContext';
 import { getAuditResults, CorporateApiError } from '../corporate/api';
-import type { AuditResultsResponse, GroupAggregate, CompositionBreakdown } from '../corporate/types';
+import type { AuditResultsResponse, GroupAggregate, MetricAggregate, CompositionBreakdown, Band, BandColor, TestType } from '../corporate/types';
 
 const STATUS_BADGE: Record<string, string> = {
   active: 'bg-emerald-50 text-emerald-700 border-emerald-200',
@@ -26,7 +26,22 @@ const CARD_THEMES = {
 } as const;
 
 type CardTheme = keyof typeof CARD_THEMES;
-const THEME_CYCLE: CardTheme[] = ['blue', 'green', 'purple', 'amber', 'pink', 'teal'];
+
+/** Цветной бейдж-вердикт (good/warn/risk/neutral) — присылается с бэка уже
+ * посчитанным и локализованным (см. corporateAggregation.ts::Band), фронт
+ * только красит по цвету. Литеральные Tailwind-классы — та же причина, что
+ * и у CARD_THEMES выше (JIT-сканер должен увидеть их в исходниках). */
+const BAND_PILL_CLASS: Record<BandColor, string> = {
+  good: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+  warn: 'bg-amber-50 text-amber-700 border-amber-200',
+  risk: 'bg-rose-50 text-rose-700 border-rose-200',
+  neutral: 'bg-slate-100 text-slate-600 border-slate-200',
+};
+
+const BandPill: React.FC<{ band: Band | null }> = ({ band }) => {
+  if (!band) return null;
+  return <span className={`inline-flex shrink-0 items-center px-2 py-0.5 rounded-full text-[11px] font-semibold border whitespace-nowrap ${BAND_PILL_CLASS[band.color]}`}>{band.label}</span>;
+};
 
 /** Одна цветная карточка-показатель — только число и подпись, без графиков
  * (по ТЗ: "без разных чартов и прочего, не нужно ничего пока рисовать"). */
@@ -50,6 +65,95 @@ export const CorporateAuditResultsPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const { t, lang } = useLanguage();
   const c = t.corporate.results;
+
+  /** Подпись шкалы под большим числом карточки — у всех тестов 0..100
+   * ("из 100"), КРОМЕ лояльности: eNPS живёт на своей шкале -100..100 (это
+   * и есть причина бага "почему-то со знаком минус" — раньше везде было
+   * захардкожено "/ 100", даже для eNPS). */
+  const scaleSuffixFor = (testType: TestType) => (testType === 'loyalty' ? c.card.enpsScale : c.card.outOf100);
+
+  /** Короткая подсказка направления шкалы под headline-числом — 3
+   * варианта, см. corporateAggregation.ts::headlineBandFor и план
+   * редизайна результатов, раздел "3 направления". */
+  const directionCaptionFor = (testType: TestType) => {
+    if (testType === 'fitness') return c.card.directionFitness;
+    if (testType === 'burnout' || testType === 'turnover') return c.card.directionRisk;
+    return c.card.directionPositive; // loyalty, wellbeing, psychSafety
+  };
+
+  /** Карточка одного числа (участник теста/подшкала) — заменяет строку в
+   * старой широкой таблице, где подпись показателя была слева, а число —
+   * далеко справа за краем экрана. Если у метрики есть distribution
+   * (сегодня — только "Распределение участников" у лояльности), рисуем
+   * список категорий с % вместо одного числа. */
+  const MetricCard: React.FC<{ metric: MetricAggregate }> = ({ metric }) => (
+    <div className="border border-sky-200 rounded-xl px-3.5 py-3">
+      <p className="text-[11px] font-semibold text-slate-500 mb-1.5">{metric.label}</p>
+      {metric.distribution ? (
+        <ul className="space-y-1">
+          {metric.distribution.map((d) => (
+            <li key={d.label} className="flex items-center justify-between text-xs gap-2">
+              <span className="text-slate-500">{d.label}</span>
+              <span className="font-semibold text-slate-900 whitespace-nowrap">{d.pct}%</span>
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <div className="flex items-center justify-between gap-2">
+          <span className="text-lg font-bold text-slate-900">{metric.average ?? '—'}</span>
+          <BandPill band={metric.band} />
+        </div>
+      )}
+    </div>
+  );
+
+  /** Большая карточка headline-числа теста (Inwell Score / индекс лояльности
+   * / риск выгорания и т.д.) — число + шкала + цветной вердикт + короткое
+   * объяснение направления + описание теста (переиспользует уже готовое
+   * t.tests.<key>.description, без новой копии). Один экземпляр = одна
+   * группа (обычно "Все"), поэтому используется только там, где смотрим на
+   * одну группу целиком (секция "Основные показатели"), не в сравнении. */
+  const HeadlineCard: React.FC<{ group: GroupAggregate; testType: TestType; headlineLabel: string }> = ({ group, testType, headlineLabel }) => {
+    const description = t.tests[testType].description;
+    return (
+      <div className="border border-sky-200 rounded-2xl p-5">
+        <div className="flex items-start justify-between gap-3 flex-wrap">
+          <div>
+            <p className="text-xs font-semibold text-slate-500 mb-1">{headlineLabel}</p>
+            <p className="text-3xl font-bold text-slate-900 leading-none">
+              {group.averageScore ?? '—'} <span className="text-sm font-medium text-slate-400">{scaleSuffixFor(testType)}</span>
+            </p>
+          </div>
+          <BandPill band={group.headlineBand} />
+        </div>
+        <p className="text-[11px] text-slate-400 mt-2">{directionCaptionFor(testType)}</p>
+        {description && <p className="text-xs text-slate-500 mt-2 max-w-prose">{description}</p>}
+      </div>
+    );
+  };
+
+  /** Сетка карточек для сравнения нескольких групп (по отделам/полу/возрасту)
+   * между собой — по одной карточке на группу: название группы, headline-
+   * число, цветной вердикт, число участников. Заменяет соответствующие
+   * строки старой широкой таблицы для 5 приоритетных тестов. */
+  const GroupComparisonGrid: React.FC<{ groups: GroupAggregate[] }> = ({ groups }) => (
+    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+      {groups.map((g) => (
+        <div key={g.key} className="border border-sky-200 rounded-xl px-3.5 py-3">
+          <p className="text-[11px] font-semibold text-slate-500 mb-1.5 truncate" title={g.label}>
+            {g.label}
+          </p>
+          <div className="flex items-center justify-between gap-2">
+            <span className="text-lg font-bold text-slate-900">{g.averageScore ?? '—'}</span>
+            <BandPill band={g.headlineBand} />
+          </div>
+          <p className="text-[11px] text-slate-400 mt-1">
+            {g.participantCount} {c.insightsParticipants}
+          </p>
+        </div>
+      ))}
+    </div>
+  );
 
   const [data, setData] = useState<AuditResultsResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -116,6 +220,12 @@ export const CorporateAuditResultsPage: React.FC = () => {
   }
 
   const { aggregation } = data;
+  // По просьбе заказчика фитнес-аудит (единственный тест с 9 сложными
+  // под-метриками формы тела) НЕ переводится на карточки — остаётся на
+  // старой широкой таблице (кроме headline-числа Inwell Score, которое
+  // теперь тоже получает цветной вердикт). 5 приоритетных опросников
+  // получают полный переход на карточки во всех 4 сравнительных секциях.
+  const isQuestionnaire = audit.testType !== 'fitness';
   const selectClass =
     'px-2.5 py-1.5 rounded-lg border border-sky-200 bg-white text-xs text-slate-700 focus:outline-none focus:ring-2 focus:ring-brand-teal/40';
 
@@ -300,10 +410,11 @@ export const CorporateAuditResultsPage: React.FC = () => {
                       <span className="text-slate-400">{c.participants}: </span>
                       <span className="font-bold text-slate-900">{aggregation.participantCount}</span>
                     </div>
-                    <div>
-                      <span className="text-slate-400">{c.averageScore}: </span>
+                    <div className="flex items-center gap-2">
+                      <span className="text-slate-400">{aggregation.headlineLabel}: </span>
                       <span className="font-bold text-slate-900">{aggregation.overall.averageScore ?? '—'}</span>
-                      <span className="text-slate-400"> / 100</span>
+                      <span className="text-slate-400">{scaleSuffixFor(audit.testType)}</span>
+                      <BandPill band={aggregation.overall.headlineBand} />
                     </div>
                   </div>
                   <div className="grid grid-cols-2 gap-3">
@@ -361,18 +472,38 @@ export const CorporateAuditResultsPage: React.FC = () => {
                   </div>
                 </div>
 
-                {/* 3 + 4. Основные показатели + распределение по категориям (в одной таблице — среднее и % в скобках) */}
+                {/* 3 + 4. Основные показатели — карточка headline-числа + карточки подшкал
+                    (5 приоритетных тестов) либо старая широкая таблица (фитнес) */}
                 <div>
                   <h2 className="text-sm font-bold text-slate-900 mb-2">{c.metricsHeading}</h2>
-                  <MetricsTable groups={[aggregation.overall]} allLabel={c.tableAll} headlineLabel={aggregation.headlineLabel} />
-                  <p className="text-[11px] text-slate-400 mt-1.5">{c.distributionNote}</p>
+                  <HeadlineCard group={aggregation.overall} testType={audit.testType} headlineLabel={aggregation.headlineLabel} />
+                  {isQuestionnaire ? (
+                    aggregation.overall.metrics.length > 0 && (
+                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mt-3">
+                        {aggregation.overall.metrics.map((m) => (
+                          <MetricCard key={m.key} metric={m} />
+                        ))}
+                      </div>
+                    )
+                  ) : (
+                    <>
+                      <div className="mt-3">
+                        <MetricsTable groups={[aggregation.overall]} allLabel={c.tableAll} headlineLabel={aggregation.headlineLabel} />
+                      </div>
+                      <p className="text-[11px] text-slate-400 mt-1.5">{c.distributionNote}</p>
+                    </>
+                  )}
                 </div>
 
                 {/* 5. Анализ по отделам */}
                 {aggregation.byDepartment.length > 0 && (
                   <div>
                     <h2 className="text-sm font-bold text-slate-900 mb-2">{c.departmentsHeading}</h2>
-                    <MetricsTable groups={[aggregation.overall, ...aggregation.byDepartment]} allLabel={c.tableAll} headlineLabel={aggregation.headlineLabel} />
+                    {isQuestionnaire ? (
+                      <GroupComparisonGrid groups={[{ ...aggregation.overall, label: c.tableAll }, ...aggregation.byDepartment]} />
+                    ) : (
+                      <MetricsTable groups={[aggregation.overall, ...aggregation.byDepartment]} allLabel={c.tableAll} headlineLabel={aggregation.headlineLabel} />
+                    )}
                   </div>
                 )}
 
@@ -380,7 +511,7 @@ export const CorporateAuditResultsPage: React.FC = () => {
                 {aggregation.byGender.length > 0 && (
                   <div>
                     <h2 className="text-sm font-bold text-slate-900 mb-2">{c.byGenderTitle}</h2>
-                    <MetricsTable groups={aggregation.byGender} headlineLabel={aggregation.headlineLabel} />
+                    {isQuestionnaire ? <GroupComparisonGrid groups={aggregation.byGender} /> : <MetricsTable groups={aggregation.byGender} headlineLabel={aggregation.headlineLabel} />}
                   </div>
                 )}
 
@@ -388,15 +519,19 @@ export const CorporateAuditResultsPage: React.FC = () => {
                 {aggregation.byAgeBand.length > 0 && (
                   <div>
                     <h2 className="text-sm font-bold text-slate-900 mb-2">{c.byAgeTitle}</h2>
-                    <MetricsTable groups={aggregation.byAgeBand} headlineLabel={aggregation.headlineLabel} />
+                    {isQuestionnaire ? <GroupComparisonGrid groups={aggregation.byAgeBand} /> : <MetricsTable groups={aggregation.byAgeBand} headlineLabel={aggregation.headlineLabel} />}
                   </div>
                 )}
 
-                {/* 8. Дополнительная аналитика — цветные карточки с числами, без графиков/чартов */}
+                {/* 8. Дополнительная аналитика — заполнение по дням. Разбивки по полу/
+                    возрасту/отделам убраны отсюда: это ровно те же числа, что уже
+                    показаны выше в секциях 5-7 (карточки/таблица), дублировать их
+                    здесь ещё раз — то самое "слишком много цифр", на которое
+                    жаловались изначально. */}
                 <div>
                   <h2 className="text-sm font-bold text-slate-900 mb-3">{c.insightsTitle}</h2>
 
-                  <div className="mb-5">
+                  <div>
                     <p className="text-xs font-semibold text-slate-500 mb-2">{c.insightsByDayTitle}</p>
                     {byDay.length === 0 ? (
                       <p className="text-xs text-slate-400">{c.insightsByDayNoData}</p>
@@ -418,57 +553,6 @@ export const CorporateAuditResultsPage: React.FC = () => {
                       </>
                     )}
                   </div>
-
-                  {aggregation.byGender.length > 0 && (
-                    <div className="mb-5">
-                      <p className="text-xs font-semibold text-slate-500 mb-2">{c.insightsByGenderTitle}</p>
-                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                        {aggregation.byGender.map((g, idx) => (
-                          <InsightCard
-                            key={g.key}
-                            theme={THEME_CYCLE[idx % THEME_CYCLE.length]}
-                            label={g.label}
-                            value={g.averageScore ?? '—'}
-                            sub={`${g.participantCount} ${c.insightsParticipants}`}
-                          />
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  {aggregation.byAgeBand.length > 0 && (
-                    <div className="mb-5">
-                      <p className="text-xs font-semibold text-slate-500 mb-2">{c.insightsByAgeTitle}</p>
-                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                        {aggregation.byAgeBand.map((b, idx) => (
-                          <InsightCard
-                            key={b.key}
-                            theme={THEME_CYCLE[idx % THEME_CYCLE.length]}
-                            label={b.label}
-                            value={b.averageScore ?? '—'}
-                            sub={`${b.participantCount} ${c.insightsParticipants}`}
-                          />
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  {aggregation.byDepartment.length > 0 && (
-                    <div>
-                      <p className="text-xs font-semibold text-slate-500 mb-2">{c.insightsByDepartmentTitle}</p>
-                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                        {aggregation.byDepartment.map((d, idx) => (
-                          <InsightCard
-                            key={d.key}
-                            theme={THEME_CYCLE[idx % THEME_CYCLE.length]}
-                            label={departmentLabel(d.key)}
-                            value={d.averageScore ?? '—'}
-                            sub={`${d.participantCount} ${c.insightsParticipants}`}
-                          />
-                        ))}
-                      </div>
-                    </div>
-                  )}
                 </div>
               </div>
             )}

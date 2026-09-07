@@ -109,49 +109,59 @@ export const CorporateDashboardPage: React.FC = () => {
           </div>
         ) : (
           <>
-            <div className="overflow-x-auto border border-sky-200 rounded-xl">
-              <table className="w-full text-xs sm:text-sm">
-                <thead>
-                  <tr className="border-b border-sky-100 bg-sky-50/50 text-left text-slate-500">
-                    <th className="px-3 py-2 font-semibold">{c.table.name}</th>
-                    <th className="px-3 py-2 font-semibold whitespace-nowrap">{c.createAudit.testTypeLabel}</th>
-                    <th className="px-3 py-2 font-semibold whitespace-nowrap">{c.table.deadline}</th>
-                    <th className="px-3 py-2 font-semibold whitespace-nowrap">{c.table.responses}</th>
-                    <th className="px-3 py-2 font-semibold whitespace-nowrap">{c.table.status}</th>
-                    <th className="px-3 py-2 font-semibold text-right">{c.table.action}</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {audits.map((a) => (
-                    <tr key={a.id} className="border-b border-sky-100 last:border-0">
-                      <td className="px-3 py-2.5 font-medium text-slate-900">{a.name}</td>
-                      <td className="px-3 py-2.5 text-slate-600 whitespace-nowrap">{t.tests[a.testType].title}</td>
-                      <td className="px-3 py-2.5 text-slate-600 whitespace-nowrap">{formatDate(a.deadline)}</td>
-                      <td className="px-3 py-2.5 text-slate-600 whitespace-nowrap">
-                        {a.responseCount} / {a.maxResponses}
-                      </td>
-                      <td className="px-3 py-2.5 whitespace-nowrap">
-                        <span className={`inline-flex px-2 py-0.5 rounded-full text-[11px] font-semibold border ${STATUS_BADGE[a.status]}`}>{c.status[a.status]}</span>
-                      </td>
-                      <td className="px-3 py-2.5 text-right whitespace-nowrap">
-                        <div className="inline-flex items-center gap-3">
-                          <button
-                            type="button"
-                            onClick={() => copyAuditLink(a)}
-                            className="inline-flex items-center gap-1 text-slate-500 font-semibold hover:text-brand-blue transition-colors"
-                          >
-                            {copiedId === a.id ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
-                            <span>{copiedId === a.id ? c.createAudit.copied : c.createAudit.copyLink}</span>
-                          </button>
-                          <Link to={`/corporate/audits/${a.id}`} className="text-brand-blue font-semibold hover:text-brand-teal transition-colors">
-                            {c.table.viewResults}
-                          </Link>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+            {/* Карточки вместо широкой 6-колоночной таблицы — раньше кнопку
+                "Посмотреть результаты" было видно только промотав таблицу
+                вбок ("нужно перематывать кубик"). Каждая карточка сразу
+                показывает и название, и заполненность, и обе кнопки — без
+                горизонтального скролла на любой ширине экрана. */}
+            <div className="space-y-3">
+              {audits.map((a) => {
+                const pct = a.maxResponses > 0 ? Math.min(100, Math.round((a.responseCount / a.maxResponses) * 100)) : 0;
+                return (
+                  <div key={a.id} className="border border-sky-200 rounded-xl px-4 py-3.5">
+                    <div className="flex items-start justify-between gap-3 mb-3">
+                      <div className="min-w-0">
+                        <p className="font-semibold text-slate-900 truncate">{a.name}</p>
+                        <p className="text-xs text-slate-500 mt-0.5">{t.tests[a.testType].title}</p>
+                      </div>
+                      <span className={`shrink-0 inline-flex px-2 py-0.5 rounded-full text-[11px] font-semibold border whitespace-nowrap ${STATUS_BADGE[a.status]}`}>
+                        {c.status[a.status]}
+                      </span>
+                    </div>
+
+                    <div className="mb-3">
+                      <div className="flex items-center justify-between text-xs text-slate-500 mb-1">
+                        <span>{c.table.responses}</span>
+                        <span className="font-semibold text-slate-700">
+                          {a.responseCount} / {a.maxResponses}
+                        </span>
+                      </div>
+                      <div className="h-1.5 rounded-full bg-sky-100 overflow-hidden">
+                        <div className="h-full rounded-full bg-brand-blue" style={{ width: `${pct}%` }} />
+                      </div>
+                    </div>
+
+                    <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 text-xs">
+                      <span className="text-slate-500">
+                        {c.table.deadline}: <span className="font-semibold text-slate-700">{formatDate(a.deadline)}</span>
+                      </span>
+                      <div className="inline-flex items-center gap-3">
+                        <button
+                          type="button"
+                          onClick={() => copyAuditLink(a)}
+                          className="inline-flex items-center gap-1 text-slate-500 font-semibold hover:text-brand-blue transition-colors"
+                        >
+                          {copiedId === a.id ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
+                          <span>{copiedId === a.id ? c.createAudit.copied : c.createAudit.copyLink}</span>
+                        </button>
+                        <Link to={`/corporate/audits/${a.id}`} className="text-brand-blue font-semibold hover:text-brand-teal transition-colors">
+                          {c.table.viewResults}
+                        </Link>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
             </div>
             {auditLimitReached && <p className="text-xs text-slate-400 mt-2">{c.auditLimitReached}</p>}
           </>

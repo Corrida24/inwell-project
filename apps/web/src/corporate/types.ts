@@ -32,6 +32,12 @@ export interface CreateAuditInput {
   comment?: string;
 }
 
+export type BandColor = 'good' | 'warn' | 'risk' | 'neutral';
+export interface Band {
+  label: string;
+  color: BandColor;
+}
+
 export interface MetricAggregate {
   key: string;
   label: string;
@@ -39,6 +45,7 @@ export interface MetricAggregate {
   hasCategory: boolean;
   average: number | null;
   distribution: { label: string; pct: number; level: number }[] | null;
+  band: Band | null;
 }
 
 export interface GroupAggregate {
@@ -46,6 +53,7 @@ export interface GroupAggregate {
   label: string;
   participantCount: number;
   averageScore: number | null;
+  headlineBand: Band | null;
   metrics: MetricAggregate[];
 }
 

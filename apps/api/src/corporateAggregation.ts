@@ -1,5 +1,5 @@
-import { METRICS } from './calc/metricsRegistry.js';
-import { METRIC_CONTENT, BAND_LABEL, BODY_FAT_CATEGORY, EXTRA_METRIC_CONTENT } from './calc/content.js';
+import { METRICS, bandFromScore } from './calc/metricsRegistry.js';
+import { METRIC_CONTENT, BAND_LABEL, RISK_LABEL, BODY_FAT_CATEGORY, EXTRA_METRIC_CONTENT } from './calc/content.js';
 import type { FullReport, Lang } from './calc/computeReport.js';
 import type { QuestionnaireReport } from './calc/questionnaire/computeQuestionnaireReport.js';
 import { TEST_LABEL_CONTENT } from './calc/questionnaire/content.js';
@@ -21,6 +21,18 @@ const LEVEL_TO_BAND_KEY: Record<number, string> = { 4: 'excellent', 3: 'good', 2
  */
 const BODY_FAT_KEY = 'bodyFat';
 
+/** "Хорошо/средне/плохо" для ОДНОГО числа — цвет для карточки + готовая
+ * локализованная подпись. Раньше карточек не было вовсе: компания видела
+ * голое число ("52") без какого-либо объяснения, хорошо это или плохо —
+ * см. обсуждение и план редизайна результатов. color — грубый 4-цветный
+ * сигнал для бейджа карточки, label — точная формулировка (напр. у fitness
+ * 5 словесных уровней сжаты всего в 3 цвета, но подпись остаётся из 5). */
+export type BandColor = 'good' | 'warn' | 'risk' | 'neutral';
+export interface Band {
+  label: string;
+  color: BandColor;
+}
+
 export interface MetricAggregate {
   key: string;
   label: string;
@@ -28,6 +40,13 @@ export interface MetricAggregate {
   hasCategory: boolean;
   average: number | null;
   distribution: { label: string; pct: number; level: number }[] | null;
+  /** Бейдж для карточки этого конкретного показателя — сегодня заполняется
+   * только у подшкал выгорания (риск-направление, пороги 34/67). У
+   * фитнес-метрик остаётся null: для 3 категорийных (BMI/WHtR/WHR) вердикт
+   * уже даёт distribution (см. buildFitnessGroupAggregate), для остальных
+   * 6 — сознательно без вердикта (нет валидированной "зоны риска", см. план
+   * редизайна результатов, раздел про фитнес). */
+  band: Band | null;
 }
 
 export interface GroupAggregate {
@@ -35,6 +54,10 @@ export interface GroupAggregate {
   label: string;
   participantCount: number;
   averageScore: number | null;
+  /** Бейдж для headline-числа этой группы (Inwell Score / индекс лояльности
+   * / риск выгорания и т.д.) — единственное поле, которое ЕСТЬ у всех 6
+   * типов теста без исключения, включая fitness. */
+  headlineBand: Band | null;
   metrics: MetricAggregate[];
 }
 
@@ -75,6 +98,66 @@ export interface AuditFilters {
 function avg(values: number[]): number | null {
   if (values.length === 0) return null;
   return Math.round((values.reduce((a, b) => a + b, 0) / values.length) * 100) / 100;
+}
+
+/** 3-уровневая шкала РИСКА (выгорание — headline и все 3 подшкалы, риск
+ * увольнения) — выше балл = выше риск. Пороги 34/67 — те же, что уже
+ * использует computeQuestionnaireReport.ts::bandFor() для балла ОДНОГО
+ * ответа; здесь та же граница применяется к уже усреднённому по группе
+ * баллу (см. план редизайна результатов, вопрос про пороги — пользователь
+ * подтвердил, что 34/67 устраивают). */
+function riskBand(score: number | null, lang: Lang): Band | null {
+  if (score == null) return null;
+  if (score >= 67) return { label: RISK_LABEL[lang].danger, color: 'risk' };
+  if (score >= 34) return { label: RISK_LABEL[lang].warn, color: 'warn' };
+  return { label: RISK_LABEL[lang].good, color: 'good' };
+}
+
+const LEVEL_BAND_LABEL: Record<Lang, { good: string; warn: string; risk: string }> = {
+  ru: { good: 'Хороший уровень', warn: 'Средний уровень', risk: 'Низкий уровень' },
+  uz: { good: 'Yaxshi daraja', warn: "O'rtacha daraja", risk: 'Past daraja' },
+};
+
+/** Та же трёхуровневая шкала 34/67, что и riskBand(), но для тестов с
+ * ПОЛОЖИТЕЛЬНЫМ направлением (благополучие, психологическая безопасность —
+ * выше балл значит лучше) — раскраска и подписи зеркальны riskBand(). */
+function levelBand(score: number | null, lang: Lang): Band | null {
+  if (score == null) return null;
+  if (score >= 67) return { label: LEVEL_BAND_LABEL[lang].good, color: 'good' };
+  if (score >= 34) return { label: LEVEL_BAND_LABEL[lang].warn, color: 'warn' };
+  return { label: LEVEL_BAND_LABEL[lang].risk, color: 'risk' };
+}
+
+const ENPS_BAND_LABEL: Record<Lang, { good: string; warn: string; risk: string }> = {
+  ru: { good: 'Хороший результат', warn: 'Средний результат', risk: 'Ниже нуля' },
+  uz: { good: 'Yaxshi natija', warn: "O'rtacha natija", risk: 'Noldan past' },
+};
+
+/** eNPS живёт на шкале -100..100 (НЕ 0-100, в отличие от всех остальных
+ * headline-чисел в этом файле) — поэтому у него отдельные, не 34/67,
+ * пороги. Ориентир — общепринятая практика интерпретации NPS/eNPS (ниже
+ * нуля — критиков больше, чем промоутеров; 0-29 — сдержанный результат;
+ * 30+ — уверенно хороший), не жёстко стандартизированная величина, при
+ * необходимости легко подвинуть (см. план редизайна результатов). */
+function enpsBand(score: number | null, lang: Lang): Band | null {
+  if (score == null) return null;
+  if (score < 0) return { label: ENPS_BAND_LABEL[lang].risk, color: 'risk' };
+  if (score < 30) return { label: ENPS_BAND_LABEL[lang].warn, color: 'warn' };
+  return { label: ENPS_BAND_LABEL[lang].good, color: 'good' };
+}
+
+/** Fitness Inwell Score — переиспользует уже существующие
+ * bandFromScore()/BAND_LABEL (ту же 5-уровневую шкалу, что и у отдельных
+ * категорийных метрик формы тела: excellent/good/normal/growth/attention),
+ * просто схлопывает 5 уровней в 4 цвета карточки: excellent и good — оба
+ * "good", normal — "neutral", growth — "warn", attention — "risk". Подпись
+ * при этом остаётся из исходных 5 слов, теряется только цвет-детализация. */
+function fitnessHeadlineBand(score: number | null, lang: Lang): Band | null {
+  if (score == null) return null;
+  const { key } = bandFromScore(score);
+  if (key === 'dash') return null;
+  const color: BandColor = key === 'excellent' || key === 'good' ? 'good' : key === 'normal' ? 'neutral' : key === 'growth' ? 'warn' : 'risk';
+  return { label: BAND_LABEL[lang][key], color };
 }
 
 /** Диспетчер по типу теста — фитнес-путь НЕ ИЗМЕНЁН (buildFitnessGroupAggregate,
@@ -126,6 +209,9 @@ export function buildLoyaltyMetric(rows: (SafeResponseRow & { results: Questionn
     hasCategory: true,
     average: null,
     distribution,
+    // Это и так разбивка на 3 категории (карточка сама себе бейдж) —
+    // отдельный band для неё не нужен.
+    band: null,
   };
   return { averageScore: eNps, metric };
 }
@@ -135,27 +221,45 @@ export function buildLoyaltyMetric(rows: (SafeResponseRow & { results: Questionn
  * встроенное в ТУ ЖЕ форму MetricAggregate/GroupAggregate, что и у фитнеса,
  * поэтому CorporateAuditResultsPage.tsx рендерит их той же таблицей без
  * отдельной ветки на фронте. */
+/** Направление и, значит, банding-функция headline-балла у каждого из 5
+ * опросников — единственное место, где это перечислено явно (см. план
+ * редизайна результатов, раздел "Как читать баллы"): loyalty — особый
+ * случай (own eNPS-шкала, см. enpsBand), burnout/turnover — риск (выше =
+ * хуже), wellbeing/psychSafety — позитивное направление (выше = лучше).
+ * Подшкалы есть только у burnout, и у них то же риск-направление, что и у
+ * его headline. */
+function headlineBandFor(testType: Exclude<TestType, 'fitness'>, score: number | null, lang: Lang): Band | null {
+  if (testType === 'burnout' || testType === 'turnover') return riskBand(score, lang);
+  return levelBand(score, lang);
+}
+
 export function buildQuestionnaireGroupAggregate(key: string, label: string, rows: (SafeResponseRow & { results: QuestionnaireReport })[], testType: Exclude<TestType, 'fitness'>, lang: Lang): GroupAggregate {
   const content = TEST_LABEL_CONTENT[lang][testType];
   const metrics: MetricAggregate[] = [];
   let averageScore: number | null;
+  let headlineBand: Band | null;
 
   if (testType === 'loyalty') {
     const { averageScore: eNps, metric } = buildLoyaltyMetric(rows, lang);
     averageScore = eNps;
+    headlineBand = enpsBand(eNps, lang);
     if (metric) metrics.push(metric);
   } else {
     const scores = rows.map((r) => r.results.headlineScore).filter((v): v is number => v != null);
     averageScore = avg(scores);
+    headlineBand = headlineBandFor(testType, averageScore, lang);
 
     const subscaleKeys = Array.from(new Set(rows.flatMap((r) => r.results.subscales?.map((s) => s.key) ?? [])));
     for (const sk of subscaleKeys) {
       const values = rows.map((r) => r.results.subscales?.find((s) => s.key === sk)?.score).filter((v): v is number => v != null);
-      metrics.push({ key: sk, label: content.subscales[sk] ?? sk, unit: '', hasCategory: false, average: avg(values), distribution: null });
+      const subAvg = avg(values);
+      // Подшкалы сегодня только у burnout — все три того же риск-направления,
+      // что и его headline (см. комментарий у headlineBandFor выше).
+      metrics.push({ key: sk, label: content.subscales[sk] ?? sk, unit: '', hasCategory: false, average: subAvg, distribution: null, band: riskBand(subAvg, lang) });
     }
   }
 
-  return { key, label, participantCount: rows.length, averageScore, metrics };
+  return { key, label, participantCount: rows.length, averageScore, headlineBand, metrics };
 }
 
 function buildFitnessGroupAggregate(key: string, label: string, rows: (SafeResponseRow & { results: FullReport })[], lang: Lang): GroupAggregate {
@@ -181,7 +285,10 @@ function buildFitnessGroupAggregate(key: string, label: string, rows: (SafeRespo
           pct: Math.round((count / values.length) * 100),
         }));
     }
-    return { key: def.key, label: content.label, unit: content.unit, hasCategory: def.hasCategory, average: avg(values), distribution };
+    // band оставляем null: у категорийных метрик вердикт уже несёт
+    // distribution (топ-категория с %), у остальных 6 — сознательно без
+    // цветного вердикта (см. комментарий на MetricAggregate.band).
+    return { key: def.key, label: content.label, unit: content.unit, hasCategory: def.hasCategory, average: avg(values), distribution, band: null };
   });
 
   // % жировой массы — добавляется как ещё один "показатель" в ту же таблицу,
@@ -203,12 +310,13 @@ function buildFitnessGroupAggregate(key: string, label: string, rows: (SafeRespo
             .sort((a, b) => b[1] - a[1])
             .map(([cat, count]) => ({ level: 0, label: BODY_FAT_CATEGORY[lang][cat as keyof (typeof BODY_FAT_CATEGORY)['ru']], pct: Math.round((count / values.length) * 100) }))
         : null;
-    metrics.push({ key: BODY_FAT_KEY, label: bfContent.label, unit: bfContent.unit, hasCategory: true, average: avg(values), distribution });
+    metrics.push({ key: BODY_FAT_KEY, label: bfContent.label, unit: bfContent.unit, hasCategory: true, average: avg(values), distribution, band: null });
   }
 
   const scores = rows.map((r) => r.results.inwellScore).filter((v): v is number => v != null);
+  const averageScore = avg(scores);
 
-  return { key, label, participantCount: rows.length, averageScore: avg(scores), metrics };
+  return { key, label, participantCount: rows.length, averageScore, headlineBand: fitnessHeadlineBand(averageScore, lang), metrics };
 }
 
 function breakdown(rows: SafeResponseRow[], pick: (r: SafeResponseRow) => string, labelFor: (key: string) => string): CompositionBreakdown[] {

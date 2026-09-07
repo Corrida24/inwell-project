@@ -657,6 +657,14 @@ export const uz: Content = {
       insightsByGenderTitle: "Jinsi bo'yicha",
       insightsByDepartmentTitle: "Bo'limlar bo'yicha",
       insightsParticipants: "ishtirokchi",
+
+      card: {
+        outOf100: "100 dan",
+        enpsScale: "−100 dan 100 gacha shkala",
+        directionRisk: "Ball qancha yuqori — xavf shuncha yuqori",
+        directionPositive: "Ball qancha yuqori — shuncha yaxshi",
+        directionFitness: "Me'yorga qancha yaqin — shuncha yaxshi",
+      },
     },
 
     publicAudit: {

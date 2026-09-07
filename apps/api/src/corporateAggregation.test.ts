@@ -1,7 +1,26 @@
 import { describe, it, expect } from 'vitest';
 import { buildLoyaltyMetric, buildQuestionnaireGroupAggregate, buildAuditAggregation } from './corporateAggregation.js';
 import type { QuestionnaireReport } from './calc/questionnaire/computeQuestionnaireReport.js';
+import type { FullReport } from './calc/computeReport.js';
 import type { SafeResponseRow } from './db/responsesRepo.js';
+
+/** Минимальная fitness-строка для банding-тестов ниже -- buildFitnessGroupAggregate
+ * реально читает только results.inwellScore/metrics/bodyFat, поэтому остальные
+ * (обязательные по типу FullReport, но не используемые этим кодом) поля не
+ * заполняем -- как и loyaltyRow/wellbeingRow ниже, это намеренно неполный
+ * fixture, а не случайный пробел. */
+function fitnessRowWithScore(inwellScore: number, createdAt: Date = new Date('2026-01-01T00:00:00Z')): SafeResponseRow & { results: FullReport } {
+  return {
+    department: 'it',
+    region: 'tashkent_city',
+    age: 30,
+    gender: 'M',
+    activityKey: 'moderate',
+    answers: null,
+    createdAt,
+    results: { inwellScore, metrics: [], bodyFat: null } as unknown as FullReport,
+  };
+}
 
 /**
  * Unit tests for the eNPS-style loyalty aggregate and the generic
@@ -151,6 +170,61 @@ describe('buildQuestionnaireGroupAggregate', () => {
     expect(group.averageScore).toBeNull();
     expect(group.participantCount).toBe(0);
     expect(group.metrics).toEqual([]);
+  });
+});
+
+/**
+ * Тесты на карточки-бейджи (band/headlineBand) -- см. план редизайна
+ * результатов: раньше компания видела голое число без объяснения, хорошо
+ * это или плохо. Направление и пороги здесь -- ровно то, что легко перепутать
+ * молча (например, назвать высокий риск выгорания "хорошим уровнем"), а
+ * ошибка не будет заметна без явного теста на конкретные числа.
+ */
+describe('headlineBand / band -- interpretation cards', () => {
+  it('burnout: risk direction, 34/67 thresholds, on both headline and every subscale', () => {
+    const low = buildQuestionnaireGroupAggregate('all', 'Все', [wellbeingRow(20, [{ key: 'exhaustion', score: 20 }])], 'burnout', 'ru');
+    expect(low.headlineBand).toEqual({ label: 'Низкий риск', color: 'good' });
+    expect(low.metrics.find((m) => m.key === 'exhaustion')?.band).toEqual({ label: 'Низкий риск', color: 'good' });
+
+    const mid = buildQuestionnaireGroupAggregate('all', 'Все', [wellbeingRow(50, [{ key: 'exhaustion', score: 50 }])], 'burnout', 'ru');
+    expect(mid.headlineBand).toEqual({ label: 'Средний риск', color: 'warn' });
+    expect(mid.metrics.find((m) => m.key === 'exhaustion')?.band).toEqual({ label: 'Средний риск', color: 'warn' });
+
+    const high = buildQuestionnaireGroupAggregate('all', 'Все', [wellbeingRow(80, [{ key: 'exhaustion', score: 80 }])], 'burnout', 'ru');
+    expect(high.headlineBand).toEqual({ label: 'Повышенный риск', color: 'risk' });
+    expect(high.metrics.find((m) => m.key === 'exhaustion')?.band).toEqual({ label: 'Повышенный риск', color: 'risk' });
+  });
+
+  it('turnover: risk direction, no subscales', () => {
+    const high = buildQuestionnaireGroupAggregate('all', 'Все', [wellbeingRow(70)], 'turnover', 'ru');
+    expect(high.headlineBand).toEqual({ label: 'Повышенный риск', color: 'risk' });
+  });
+
+  it('wellbeing / psychSafety: positive direction -- mirrors risk direction (high score = good, not bad)', () => {
+    const high = buildQuestionnaireGroupAggregate('all', 'Все', [wellbeingRow(80)], 'wellbeing', 'ru');
+    expect(high.headlineBand).toEqual({ label: 'Хороший уровень', color: 'good' });
+
+    const low = buildQuestionnaireGroupAggregate('all', 'Все', [wellbeingRow(10)], 'wellbeing', 'ru');
+    expect(low.headlineBand).toEqual({ label: 'Низкий уровень', color: 'risk' });
+  });
+
+  it('loyalty: uses the eNPS scale (-100..100), not the 34/67 thresholds -- this is the bug the redesign fixes (no more "/100" on a negative eNPS)', () => {
+    const belowZero = buildQuestionnaireGroupAggregate('all', 'Все', [loyaltyRow(2)], 'loyalty', 'ru');
+    expect(belowZero.averageScore).toBe(-100);
+    expect(belowZero.headlineBand).toEqual({ label: 'Ниже нуля', color: 'risk' });
+
+    const solid = buildQuestionnaireGroupAggregate('all', 'Все', [loyaltyRow(10)], 'loyalty', 'ru');
+    expect(solid.averageScore).toBe(100);
+    expect(solid.headlineBand).toEqual({ label: 'Хороший результат', color: 'good' });
+  });
+
+  it('fitness: reuses the existing 5-level bandFromScore/BAND_LABEL, collapsed to 4 badge colors', () => {
+    const excellentRows = [fitnessRowWithScore(92)];
+    const excellent = buildAuditAggregation(excellentRows, {}, 'fitness', 'ru');
+    expect(excellent.overall.headlineBand).toEqual({ label: 'Отлично', color: 'good' });
+
+    const attention = buildAuditAggregation([fitnessRowWithScore(15)], {}, 'fitness', 'ru');
+    expect(attention.overall.headlineBand).toEqual({ label: 'Требует внимания', color: 'risk' });
   });
 });
 

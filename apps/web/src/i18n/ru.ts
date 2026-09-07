@@ -660,6 +660,17 @@ export const ru = {
       insightsByGenderTitle: "По полу",
       insightsByDepartmentTitle: "По отделам",
       insightsParticipants: "участников",
+
+      // Подписи для карточек-показателей (см. план редизайна результатов):
+      // шкала числа + короткая подсказка "что значит выше" рядом с цветным
+      // бейджем good/warn/risk, который уже приходит локализованным с бэка.
+      card: {
+        outOf100: "из 100",
+        enpsScale: "шкала от −100 до 100",
+        directionRisk: "Выше балл — выше риск",
+        directionPositive: "Выше балл — лучше",
+        directionFitness: "Чем ближе к норме — тем лучше",
+      },
     },
 
     publicAudit: {
