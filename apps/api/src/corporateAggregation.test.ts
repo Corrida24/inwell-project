@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { buildLoyaltyMetric, buildQuestionnaireGroupAggregate } from './corporateAggregation.js';
+import { buildLoyaltyMetric, buildQuestionnaireGroupAggregate, buildAuditAggregation } from './corporateAggregation.js';
 import type { QuestionnaireReport } from './calc/questionnaire/computeQuestionnaireReport.js';
 import type { SafeResponseRow } from './db/responsesRepo.js';
 
@@ -12,7 +12,7 @@ import type { SafeResponseRow } from './db/responsesRepo.js';
  * the comment on buildLoyaltyMetric in corporateAggregation.ts).
  */
 
-function loyaltyRow(rating: number): SafeResponseRow & { results: QuestionnaireReport } {
+function loyaltyRow(rating: number, createdAt: Date = new Date('2026-01-01T00:00:00Z')): SafeResponseRow & { results: QuestionnaireReport } {
   return {
     department: 'sales',
     region: 'tashkent_city',
@@ -20,6 +20,7 @@ function loyaltyRow(rating: number): SafeResponseRow & { results: QuestionnaireR
     gender: 'M',
     activityKey: null,
     answers: { '1': rating },
+    createdAt,
     results: {
       testKey: 'loyalty',
       measuredAt: new Date().toISOString(),
@@ -89,7 +90,7 @@ describe('buildLoyaltyMetric', () => {
   });
 });
 
-function wellbeingRow(headlineScore: number, subscales: { key: string; score: number }[] = []): SafeResponseRow & { results: QuestionnaireReport } {
+function wellbeingRow(headlineScore: number, subscales: { key: string; score: number }[] = [], createdAt: Date = new Date('2026-01-01T00:00:00Z')): SafeResponseRow & { results: QuestionnaireReport } {
   return {
     department: 'it',
     region: 'tashkent_city',
@@ -97,6 +98,7 @@ function wellbeingRow(headlineScore: number, subscales: { key: string; score: nu
     gender: 'F',
     activityKey: null,
     answers: {},
+    createdAt,
     results: {
       testKey: 'wellbeing',
       measuredAt: new Date().toISOString(),
@@ -149,5 +151,40 @@ describe('buildQuestionnaireGroupAggregate', () => {
     expect(group.averageScore).toBeNull();
     expect(group.participantCount).toBe(0);
     expect(group.metrics).toEqual([]);
+  });
+});
+
+describe('buildAuditAggregation -- responsesByDay', () => {
+  it('groups responses by calendar day (UTC date, from createdAt) and sorts ascending', () => {
+    const rows = [
+      wellbeingRow(50, [], new Date('2026-01-03T10:00:00Z')),
+      wellbeingRow(60, [], new Date('2026-01-01T09:00:00Z')),
+      wellbeingRow(70, [], new Date('2026-01-01T22:00:00Z')),
+      wellbeingRow(80, [], new Date('2026-01-02T00:00:00Z')),
+    ];
+    const aggregation = buildAuditAggregation(rows, {}, 'wellbeing', 'ru');
+    expect(aggregation.responsesByDay).toEqual([
+      { date: '2026-01-01', count: 2 },
+      { date: '2026-01-02', count: 1 },
+      { date: '2026-01-03', count: 1 },
+    ]);
+  });
+
+  it('respects applied filters -- responsesByDay only counts the filtered rows, not all of them', () => {
+    const rows = [
+      { ...wellbeingRow(50, [], new Date('2026-01-01T00:00:00Z')), department: 'it' },
+      { ...wellbeingRow(60, [], new Date('2026-01-01T00:00:00Z')), department: 'sales' },
+      { ...wellbeingRow(70, [], new Date('2026-01-02T00:00:00Z')), department: 'it' },
+    ];
+    const aggregation = buildAuditAggregation(rows, { department: 'it' }, 'wellbeing', 'ru');
+    expect(aggregation.responsesByDay).toEqual([
+      { date: '2026-01-01', count: 1 },
+      { date: '2026-01-02', count: 1 },
+    ]);
+  });
+
+  it('returns an empty array when there are no responses', () => {
+    const aggregation = buildAuditAggregation([], {}, 'wellbeing', 'ru');
+    expect(aggregation.responsesByDay).toEqual([]);
   });
 });

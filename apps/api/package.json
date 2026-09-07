@@ -10,6 +10,7 @@
     "migrate": "tsx src/db/migrate.ts",
     "create-company": "tsx src/db/createCompany.ts",
     "seed-demo-company": "tsx src/db/seedDemoCompany.ts",
+    "seed-demo-all-tests": "tsx src/db/seedDemoAllTests.ts",
     "test": "tsx src/calc/selfTest.ts",
     "test:unit": "vitest run"
   },

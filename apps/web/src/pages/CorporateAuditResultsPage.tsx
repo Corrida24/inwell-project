@@ -11,6 +11,36 @@ const STATUS_BADGE: Record<string, string> = {
   expired: 'bg-rose-50 text-rose-600 border-rose-200',
 };
 
+/** Литеральные строки Tailwind-классов (не собираются шаблонной строкой
+ * из переменной), чтобы JIT-сканер контента их точно нашёл в исходниках —
+ * см. заметку в конце сессии про безопасный паттерн для цветовых тем.
+ * "Яркие цвета, почти белые, еле заметные" по ТЗ — очень светлый tint-фон +
+ * насыщенный цвет только у подписи/числа. */
+const CARD_THEMES = {
+  blue: { bg: 'bg-sky-50/70', border: 'border-sky-100', label: 'text-sky-600', value: 'text-sky-900' },
+  green: { bg: 'bg-emerald-50/70', border: 'border-emerald-100', label: 'text-emerald-600', value: 'text-emerald-900' },
+  purple: { bg: 'bg-violet-50/70', border: 'border-violet-100', label: 'text-violet-600', value: 'text-violet-900' },
+  amber: { bg: 'bg-amber-50/70', border: 'border-amber-100', label: 'text-amber-600', value: 'text-amber-900' },
+  pink: { bg: 'bg-pink-50/70', border: 'border-pink-100', label: 'text-pink-600', value: 'text-pink-900' },
+  teal: { bg: 'bg-teal-50/70', border: 'border-teal-100', label: 'text-teal-600', value: 'text-teal-900' },
+} as const;
+
+type CardTheme = keyof typeof CARD_THEMES;
+const THEME_CYCLE: CardTheme[] = ['blue', 'green', 'purple', 'amber', 'pink', 'teal'];
+
+/** Одна цветная карточка-показатель — только число и подпись, без графиков
+ * (по ТЗ: "без разных чартов и прочего, не нужно ничего пока рисовать"). */
+const InsightCard: React.FC<{ theme: CardTheme; label: string; value: React.ReactNode; sub?: string }> = ({ theme, label, value, sub }) => {
+  const th = CARD_THEMES[theme];
+  return (
+    <div className={`rounded-xl border ${th.border} ${th.bg} px-3.5 py-3`}>
+      <p className={`text-[11px] font-semibold ${th.label} mb-1`}>{label}</p>
+      <p className={`text-xl font-bold ${th.value} leading-tight`}>{value}</p>
+      {sub && <p className="text-[11px] text-slate-400 mt-0.5">{sub}</p>}
+    </div>
+  );
+};
+
 function formatDate(iso: string): string {
   const [y, m, d] = iso.split('-');
   return `${d}.${m}.${y}`;
@@ -170,6 +200,16 @@ export const CorporateAuditResultsPage: React.FC = () => {
 
   const compositionDepartment = aggregation.composition.department.map((d) => ({ ...d, label: departmentLabel(d.key) }));
   const compositionRegion = aggregation.composition.region.map((r) => ({ ...r, label: regionLabel(r.key) }));
+
+  function formatShortDate(iso: string): string {
+    const [, m, d] = iso.split('-');
+    return `${d}.${m}`;
+  }
+
+  const byDay = aggregation.responsesByDay;
+  const byDayTotal = byDay.reduce((a, d) => a + d.count, 0);
+  const byDayAvg = byDay.length > 0 ? Math.round((byDayTotal / byDay.length) * 10) / 10 : null;
+  const byDayPeak = byDay.length > 0 ? byDay.reduce((best, d) => (d.count > best.count ? d : best), byDay[0]) : null;
 
   return (
     <section className="min-h-screen px-5 pt-20 pb-14 bg-white">
@@ -351,6 +391,85 @@ export const CorporateAuditResultsPage: React.FC = () => {
                     <MetricsTable groups={aggregation.byAgeBand} headlineLabel={aggregation.headlineLabel} />
                   </div>
                 )}
+
+                {/* 8. Дополнительная аналитика — цветные карточки с числами, без графиков/чартов */}
+                <div>
+                  <h2 className="text-sm font-bold text-slate-900 mb-3">{c.insightsTitle}</h2>
+
+                  <div className="mb-5">
+                    <p className="text-xs font-semibold text-slate-500 mb-2">{c.insightsByDayTitle}</p>
+                    {byDay.length === 0 ? (
+                      <p className="text-xs text-slate-400">{c.insightsByDayNoData}</p>
+                    ) : (
+                      <>
+                        <div className="grid grid-cols-3 gap-3 mb-3">
+                          <InsightCard theme="blue" label={c.insightsByDaySpan} value={byDay.length} />
+                          <InsightCard theme="green" label={c.insightsByDayAvg} value={byDayAvg ?? '—'} />
+                          <InsightCard theme="amber" label={c.insightsByDayPeak} value={byDayPeak?.count ?? '—'} sub={byDayPeak ? formatShortDate(byDayPeak.date) : undefined} />
+                        </div>
+                        <div className="flex flex-wrap gap-2">
+                          {byDay.map((d) => (
+                            <div key={d.date} className="rounded-lg border border-sky-100 bg-sky-50/70 px-2.5 py-1.5 text-center min-w-[64px]">
+                              <p className="text-[10px] font-semibold text-sky-600">{formatShortDate(d.date)}</p>
+                              <p className="text-sm font-bold text-sky-900">{d.count}</p>
+                            </div>
+                          ))}
+                        </div>
+                      </>
+                    )}
+                  </div>
+
+                  {aggregation.byGender.length > 0 && (
+                    <div className="mb-5">
+                      <p className="text-xs font-semibold text-slate-500 mb-2">{c.insightsByGenderTitle}</p>
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                        {aggregation.byGender.map((g, idx) => (
+                          <InsightCard
+                            key={g.key}
+                            theme={THEME_CYCLE[idx % THEME_CYCLE.length]}
+                            label={g.label}
+                            value={g.averageScore ?? '—'}
+                            sub={`${g.participantCount} ${c.insightsParticipants}`}
+                          />
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {aggregation.byAgeBand.length > 0 && (
+                    <div className="mb-5">
+                      <p className="text-xs font-semibold text-slate-500 mb-2">{c.insightsByAgeTitle}</p>
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                        {aggregation.byAgeBand.map((b, idx) => (
+                          <InsightCard
+                            key={b.key}
+                            theme={THEME_CYCLE[idx % THEME_CYCLE.length]}
+                            label={b.label}
+                            value={b.averageScore ?? '—'}
+                            sub={`${b.participantCount} ${c.insightsParticipants}`}
+                          />
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {aggregation.byDepartment.length > 0 && (
+                    <div>
+                      <p className="text-xs font-semibold text-slate-500 mb-2">{c.insightsByDepartmentTitle}</p>
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                        {aggregation.byDepartment.map((d, idx) => (
+                          <InsightCard
+                            key={d.key}
+                            theme={THEME_CYCLE[idx % THEME_CYCLE.length]}
+                            label={departmentLabel(d.key)}
+                            value={d.averageScore ?? '—'}
+                            sub={`${d.participantCount} ${c.insightsParticipants}`}
+                          />
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
               </div>
             )}
         </>

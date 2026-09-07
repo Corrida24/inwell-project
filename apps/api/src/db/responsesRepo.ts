@@ -111,13 +111,20 @@ export interface SafeResponseRow {
   activityKey: string | null;
   answers: Record<string, number> | null;
   results: FullReport | QuestionnaireReport;
+  /** Момент отправки — единственное поле здесь, которое можно было бы
+   * теоретически использовать для сопоставления с внешними источниками
+   * (например, точным временем обеденного перерыва), но само по себе оно
+   * не идентифицирует человека, поэтому остаётся в "безопасной" форме
+   * ответа. Нужно для агрегата "заполнение по дням" (responsesByDay) —
+   * см. corporateAggregation.ts. */
+  createdAt: Date;
 }
 
-/** Все ответы аудита (без PII/respondent_id) — размер аудита ограничен 100
- * ответами, поэтому фильтрация/группировка по department/gender/age/region
- * для дашборда делается в коде (corporateAggregation.ts), а не в SQL.
- * answers добавлено ради агрегата лояльности (промоутеры/критики считаются
- * из сырого рейтинга, не из headline-балла — см. corporateAggregation.ts). */
+/** Все ответы аудита (без PII/respondent_id) — фильтрация/группировка по
+ * department/gender/age/region для дашборда делается в коде
+ * (corporateAggregation.ts), а не в SQL. answers добавлено ради агрегата
+ * лояльности (промоутеры/критики считаются из сырого рейтинга, не из
+ * headline-балла — см. corporateAggregation.ts). */
 export async function getSafeResponsesForAudit(auditId: string): Promise<SafeResponseRow[]> {
   const { rows } = await pool.query<{
     department: string | null;
@@ -127,6 +134,7 @@ export async function getSafeResponsesForAudit(auditId: string): Promise<SafeRes
     activity_key: string | null;
     answers: Record<string, number> | null;
     results: FullReport | QuestionnaireReport;
-  }>(`SELECT department, region, age, gender, activity_key, answers, results FROM responses WHERE audit_id = $1 ORDER BY created_at ASC`, [auditId]);
-  return rows.map((r) => ({ department: r.department, region: r.region, age: r.age, gender: r.gender, activityKey: r.activity_key, answers: r.answers, results: r.results }));
+    created_at: Date;
+  }>(`SELECT department, region, age, gender, activity_key, answers, results, created_at FROM responses WHERE audit_id = $1 ORDER BY created_at ASC`, [auditId]);
+  return rows.map((r) => ({ department: r.department, region: r.region, age: r.age, gender: r.gender, activityKey: r.activity_key, answers: r.answers, results: r.results, createdAt: r.created_at }));
 }

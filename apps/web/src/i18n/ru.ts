@@ -588,9 +588,9 @@ export const ru = {
       testTypeLabel: "Какой тест пройдут сотрудники",
       deadlineLabel: "Дедлайн",
       maxResponsesLabel: "Максимальное количество ответов",
-      maxResponsesHint: "От 15 до 100.",
-      maxResponsesTooSmall: "Минимум 15 сотрудников — аудиты с меньшим числом участников не дают показательной аналитики.",
-      maxResponsesTooBig: "Количество сотрудников больше 100. Обсудите индивидуальную стоимость с администраторами проекта.",
+      maxResponsesHint: "От 10 до 10 000.",
+      maxResponsesTooSmall: "Минимум 10 сотрудников — аудиты с меньшим числом участников не дают показательной аналитики.",
+      maxResponsesTooBig: "Количество сотрудников больше 10 000. Обсудите индивидуальную стоимость с администраторами проекта.",
       commentLabel: "Комментарий",
       commentPlaceholder: "Необязательно",
       submit: "Создать",
@@ -649,6 +649,17 @@ export const ru = {
 
       byGenderTitle: "Анализ по полу",
       byAgeTitle: "Анализ по возрасту",
+
+      insightsTitle: "Дополнительная аналитика",
+      insightsByDayTitle: "Заполнение по дням",
+      insightsByDaySpan: "Дней сбора",
+      insightsByDayAvg: "В среднем в день",
+      insightsByDayPeak: "Самый активный день",
+      insightsByDayNoData: "Пока нет данных по датам.",
+      insightsByAgeTitle: "По возрастным группам",
+      insightsByGenderTitle: "По полу",
+      insightsByDepartmentTitle: "По отделам",
+      insightsParticipants: "участников",
     },
 
     publicAudit: {

@@ -247,6 +247,13 @@ export interface AuditAggregation {
   byDepartment: GroupAggregate[];
   byGender: GroupAggregate[];
   byAgeBand: GroupAggregate[];
+  /** "Заполнение по дням" — счётчик ответов по календарной дате (по
+   * дате/времени сервера, created_at TIMESTAMPTZ), отсортировано по
+   * возрастанию. Строится из уже отфильтрованной выборки (filtered), поэтому
+   * применённые фильтры (отдел/пол/возраст) сокращают и этот график тоже —
+   * так же, как они сокращают все остальные срезы ниже. Даты в формате
+   * YYYY-MM-DD, тот же плоский строковый формат, что и audit.deadline. */
+  responsesByDay: { date: string; count: number }[];
 }
 
 /** "Основные положительные показатели" / "Основные зоны внимания" — простое
@@ -315,6 +322,15 @@ export function buildAuditAggregation(allRows: SafeResponseRow[], filters: Audit
   const ageBandIds = Array.from(new Set(filtered.map((r) => ageBandFor(r.age).id)));
   const byAgeBand = AGE_BANDS.filter((b) => ageBandIds.includes(b.id)).map((b) => buildGroupAggregate(b.id, b.label, filtered.filter((r) => ageBandFor(r.age).id === b.id), testType, lang));
 
+  const dayCounts = new Map<string, number>();
+  for (const r of filtered) {
+    const d = r.createdAt.toISOString().slice(0, 10);
+    dayCounts.set(d, (dayCounts.get(d) ?? 0) + 1);
+  }
+  const responsesByDay = Array.from(dayCounts.entries())
+    .sort((a, b) => (a[0] < b[0] ? -1 : a[0] > b[0] ? 1 : 0))
+    .map(([date, count]) => ({ date, count }));
+
   return {
     participantCount: filtered.length,
     availableFilters,
@@ -327,5 +343,6 @@ export function buildAuditAggregation(allRows: SafeResponseRow[], filters: Audit
     byDepartment,
     byGender,
     byAgeBand,
+    responsesByDay,
   };
 }

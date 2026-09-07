@@ -89,9 +89,10 @@ export interface AuditAggregation {
   byDepartment: GroupAggregate[];
   byGender: GroupAggregate[];
   byAgeBand: GroupAggregate[];
+  responsesByDay: { date: string; count: number }[];
 }
 
-/** Пока ответов меньше MIN_RESPONSES_PER_AUDIT (15) — бэкенд не считает
+/** Пока ответов меньше MIN_RESPONSES_PER_AUDIT (10) — бэкенд не считает
  * агрегацию вовсе (см. routes/corporate.ts), а просто говорит "сколько ещё
  * не хватает". */
 export interface InsufficientDataResponse {

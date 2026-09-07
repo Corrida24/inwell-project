@@ -585,9 +585,9 @@ export const uz: Content = {
       testTypeLabel: "Xodimlar qaysi testni topshiradi",
       deadlineLabel: "Muddat",
       maxResponsesLabel: "Maksimal javoblar soni",
-      maxResponsesHint: "15 dan 100 gacha.",
-      maxResponsesTooSmall: "Kamida 15 xodim — kichikroq auditlar ishonchli tahlil bermaydi.",
-      maxResponsesTooBig: "Xodimlar soni 100 dan ortiq. Individual narxni loyiha administratorlari bilan muhokama qiling.",
+      maxResponsesHint: "10 dan 10 000 gacha.",
+      maxResponsesTooSmall: "Kamida 10 xodim — kichikroq auditlar ishonchli tahlil bermaydi.",
+      maxResponsesTooBig: "Xodimlar soni 10 000 dan ortiq. Individual narxni loyiha administratorlari bilan muhokama qiling.",
       commentLabel: "Izoh",
       commentPlaceholder: "Ixtiyoriy",
       submit: "Yaratish",
@@ -646,6 +646,17 @@ export const uz: Content = {
 
       byGenderTitle: "Jinsi bo'yicha tahlil",
       byAgeTitle: "Yoshi bo'yicha tahlil",
+
+      insightsTitle: "Qo'shimcha tahlil",
+      insightsByDayTitle: "Kunlar bo'yicha to'lish",
+      insightsByDaySpan: "Yig'ish kunlari",
+      insightsByDayAvg: "Kuniga o'rtacha",
+      insightsByDayPeak: "Eng faol kun",
+      insightsByDayNoData: "Sanalar bo'yicha ma'lumot hali yo'q.",
+      insightsByAgeTitle: "Yosh guruhlari bo'yicha",
+      insightsByGenderTitle: "Jinsi bo'yicha",
+      insightsByDepartmentTitle: "Bo'limlar bo'yicha",
+      insightsParticipants: "ishtirokchi",
     },
 
     publicAudit: {
